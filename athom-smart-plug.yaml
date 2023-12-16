@@ -1,6 +1,6 @@
 substitutions:
   name: "athom-smart-plug-v3"
-  friendly_name: "Smart Plug V3"
+  friendly_name: "Athom Plug V3"
   room: ""
   device_description: "athom esp32c3 smart plug"
   project_name: "Athom Technology.Smart Plug V3"
