@@ -5,6 +5,8 @@ substitutions:
   device_description: "athom esp32c3 smart plug"
   project_name: "Athom Technology.Smart Plug V3"
   project_version: "1.0"
+  relay_restore_mode: RESTORE_DEFAULT_OFF
+  hidden_ssid: "false"
 
 esphome:
   name: "${name}"
@@ -22,8 +24,11 @@ esp32:
   board: esp32-c3-devkitm-1
   variant: ESP32C3
   framework:
-    type: esp-idf
+    type: arduino
     version: recommended
+
+preferences:
+  flash_write_interval: 1min
 
 api:
 
@@ -39,7 +44,8 @@ web_server:
   port: 80
 
 wifi:
-  ap: {} # This spawns an AP with the device name and mac address with no password.
+  fast_connect: ${hidden_ssid}
+  ap: {}
 
 captive_portal:
 
@@ -49,6 +55,9 @@ dashboard_import:
 uart:
   rx_pin: GPIO20
   baud_rate: 4800
+  data_bits: 8
+  stop_bits: 1
+  parity: EVEN
 
 globals:
   - id: total_energy
@@ -102,7 +111,6 @@ sensor:
       filters:
           - lambda: if (x < 3.0) return 0.0; else return x;    #For the chip will report less than 3w power when no load is connected
 
-
     energy:
       name: "Energy"
       id: energy
@@ -150,9 +158,10 @@ button:
 
 switch:
   - platform: gpio
-    name: "${friendly_name}"
+    name: "Power"
     pin: GPIO5
     id: relay
+    restore_mode: ${relay_restore_mode}
 
 light:
   - platform: status_led
