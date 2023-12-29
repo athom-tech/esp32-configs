@@ -4,7 +4,7 @@ substitutions:
   room: ""
   device_description: "athom esp32c3 smart plug"
   project_name: "Athom Technology.Smart Plug V3"
-  project_version: "1.0"
+  project_version: "ESP32C3"
   relay_restore_mode: RESTORE_DEFAULT_OFF
   hidden_ssid: "false"
 
@@ -22,13 +22,14 @@ esphome:
 
 esp32:
   board: esp32-c3-devkitm-1
+  flash_size: 4MB
   variant: ESP32C3
   framework:
     type: arduino
     version: recommended
 
 preferences:
-  flash_write_interval: 1min
+  flash_write_interval: 5min
 
 api:
 
