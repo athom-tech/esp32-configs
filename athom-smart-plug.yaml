@@ -97,26 +97,29 @@ sensor:
     update_interval: 60s
 
   - platform: cse7766
-    update_interval: 5s
     current:
       name: "Current"
       filters:
           - lambda: if (x < 0.060) return 0.0; else return x;   #For the chip will report less than 3w power when no load is connected
-
+          - throttle_average: 5s
 
     voltage:
       name: "Voltage"
+      filters:
+          - throttle: 5s
     power:
       name: "Power"
       id: power_sensor
       filters:
           - lambda: if (x < 3.0) return 0.0; else return x;    #For the chip will report less than 3w power when no load is connected
+          - throttle: 5s
 
     energy:
       name: "Energy"
       id: energy
       unit_of_measurement: kWh
       filters:
+        - throttle: 5s
         # Multiplication factor from W to kW is 0.001
         - multiply: 0.001
       on_value:
