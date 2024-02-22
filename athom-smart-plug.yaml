@@ -106,7 +106,7 @@ sensor:
     voltage:
       name: "Voltage"
       filters:
-          - throttle: 5s
+          - throttle: 15s
     power:
       name: "Power"
       id: power_sensor
@@ -119,7 +119,7 @@ sensor:
       id: energy
       unit_of_measurement: kWh
       filters:
-        - throttle: 5s
+        - throttle: 60s
         # Multiplication factor from W to kW is 0.001
         - multiply: 0.001
       on_value:
