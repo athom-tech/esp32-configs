@@ -89,7 +89,6 @@ binary_sensor:
           - ON for at least 4s
         then:
           - button.press: Reset
-
 sensor:
   - platform: uptime
     name: "Uptime Sensor"
@@ -112,6 +111,7 @@ sensor:
       - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
     unit_of_measurement: "%"
     entity_category: diagnostic
+
 
   - platform: cse7766
     current:
@@ -160,7 +160,7 @@ sensor:
     accuracy_decimals: 3
     lambda: |-
       return id(total_energy);
-    update_interval: 10s
+    update_interval: ${sensor_update_interval}
 
   - platform: total_daily_energy
     name: "Total Daily Energy"
@@ -170,7 +170,6 @@ sensor:
     accuracy_decimals: 3
     filters:
       - multiply: 0.001
-
 
 button:
   - platform: factory_reset
