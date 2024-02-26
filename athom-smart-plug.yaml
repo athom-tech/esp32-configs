@@ -93,6 +93,7 @@ binary_sensor:
 sensor:
   - platform: uptime
     name: "Uptime Sensor"
+    id: uptime_sensor
     entity_category: diagnostic
     internal: True
 
