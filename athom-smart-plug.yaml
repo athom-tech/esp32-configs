@@ -7,6 +7,7 @@ substitutions:
   project_version: "ESP32C3"
   relay_restore_mode: RESTORE_DEFAULT_OFF
   hidden_ssid: "false"
+  sensor_update_interval: 10s
 
 esphome:
   name: "${name}"
@@ -69,6 +70,7 @@ globals:
 binary_sensor:
   - platform: status
     name: "Status"
+    entity_category: diagnostic
 
   - platform: gpio
     pin:
@@ -91,37 +93,55 @@ binary_sensor:
 sensor:
   - platform: uptime
     name: "Uptime Sensor"
+    entity_category: diagnostic
+    internal: True
 
   - platform: wifi_signal
     name: "WiFi Signal"
+    id: wifi_signal_db
     update_interval: 60s
+    entity_category: diagnostic
+    internal: true
+
+  # Reports the WiFi signal strength in %
+  - platform: copy
+    source_id: wifi_signal_db
+    name: "WiFi Strength"
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "%"
+    entity_category: diagnostic
 
   - platform: cse7766
     current:
       name: "Current"
       filters:
+          - throttle_average: ${sensor_update_interval}
           - lambda: if (x < 0.060) return 0.0; else return x;   #For the chip will report less than 3w power when no load is connected
-          - throttle_average: 5s
+
 
     voltage:
       name: "Voltage"
       filters:
-          - throttle: 15s
+          - throttle_average: ${sensor_update_interval}
+
     power:
       name: "Power"
       id: power_sensor
       filters:
+          - throttle_average: ${sensor_update_interval}
           - lambda: if (x < 3.0) return 0.0; else return x;    #For the chip will report less than 3w power when no load is connected
-          - throttle: 5s
+
 
     energy:
       name: "Energy"
       id: energy
       unit_of_measurement: kWh
       filters:
-        - throttle: 60s
+        - throttle_average: ${sensor_update_interval}
         # Multiplication factor from W to kW is 0.001
         - multiply: 0.001
+        - filter_out: nan
       on_value:
         then:
           - lambda: |-
@@ -159,6 +179,7 @@ button:
   - platform: safe_mode
     name: "Safe Mode"
     internal: false
+    entity_category: config
 
 switch:
   - platform: gpio
@@ -180,11 +201,60 @@ text_sensor:
   - platform: wifi_info
     ip_address:
       name: "IP Address"
+      entity_category: diagnostic
     ssid:
       name: "Connected SSID"
+      entity_category: diagnostic
     mac_address:
       name: "Mac Address"
+      entity_category: diagnostic
+
+  #  Creates a sensor showing when the device was last restarted
+  - platform: template
+    name: 'Device Last Restart'
+    id: device_last_restart
+    icon: mdi:clock
+    entity_category: diagnostic
+#    device_class: timestamp
+
+  #  Creates a sensor of the uptime of the device, in formatted days, hours, minutes and seconds
+  - platform: template
+    name: "Device Uptime"
+    entity_category: diagnostic
+    lambda: |-
+      int seconds = (id(uptime_sensor).state);
+      int days = seconds / (24 * 3600);
+      seconds = seconds % (24 * 3600);
+      int hours = seconds / 3600;
+      seconds = seconds % 3600;
+      int minutes = seconds /  60;
+      seconds = seconds % 60;
+      if ( days > 3650 ) {
+        return { "Starting up" };
+      } else if ( days ) {
+        return { (String(days) +"d " + String(hours) +"h " + String(minutes) +"m "+ String(seconds) +"s").c_str() };
+      } else if ( hours ) {
+        return { (String(hours) +"h " + String(minutes) +"m "+ String(seconds) +"s").c_str() };
+      } else if ( minutes ) {
+        return { (String(minutes) +"m "+ String(seconds) +"s").c_str() };
+      } else {
+        return { (String(seconds) +"s").c_str() };
+      }
+    icon: mdi:clock-start
 
 time:
   - platform: sntp
     id: sntp_time
+  # Change sync interval from default 5min to 6 hours
+    update_interval: 360min    
+  # Publish the time the device was last restarted
+    on_time_sync:
+      then:
+        # Update last restart time, but only once.
+        - if:
+            condition:
+              lambda: 'return id(device_last_restart).state == "";'
+            then:
+              - text_sensor.template.publish:
+                  id: device_last_restart
+                  state: !lambda 'return id(sntp_time).now().strftime("%a %d %b %Y - %I:%M:%S %p");'
