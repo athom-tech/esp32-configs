@@ -107,6 +107,7 @@ binary_sensor:
 sensor:
   - platform: uptime
     name: "Uptime Sensor"
+    id: uptime_sensor
     entity_category: diagnostic
     internal: true    
 
@@ -169,6 +170,7 @@ sensor:
 
   - platform: template
     name: "Total Energy"
+    id: total_energy_sensor
     unit_of_measurement: kWh
     device_class: "energy"
     state_class: "total_increasing"
