@@ -16,7 +16,7 @@ substitutions:
   # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
   timezone: ""
   # Enables faster network connections, with last connected SSID being connected to and no full scan for SSID being undertaken
-  wifi_fast_connect: "false"   
+  wifi_fast_connect: "false"
 
 esphome:
   name: "${name}"
@@ -85,7 +85,7 @@ binary_sensor:
   - platform: status
     name: "Status"
     entity_category: diagnostic    
-    
+
   - platform: gpio
     pin:
       number: GPIO3
@@ -103,13 +103,12 @@ binary_sensor:
           - ON for at least 4s
         then:
           - button.press: Reset
-
 sensor:
   - platform: uptime
     name: "Uptime Sensor"
     id: uptime_sensor
     entity_category: diagnostic
-    internal: true    
+    internal: true
 
   - platform: wifi_signal
     name: "WiFi Signal"
@@ -126,7 +125,6 @@ sensor:
       - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
     unit_of_measurement: "%"
     entity_category: diagnostic
-
     
   - platform: cse7766
     current:
@@ -151,6 +149,7 @@ sensor:
           - throttle_average: ${sensor_update_interval}
           - lambda: if (x < 3.0) return 0.0; else return x;    #For the chip will report less than 3w power when no load is connected
 
+
     energy:
       name: "Energy"
       id: energy
@@ -159,6 +158,7 @@ sensor:
         - throttle_average: ${sensor_update_interval}
         # Multiplication factor from W to kW is 0.001
         - multiply: 0.001
+        - filter_out: nan
       on_value:
         then:
           - lambda: |-
@@ -179,7 +179,7 @@ sensor:
     lambda: |-
       return id(total_energy);
     update_interval: ${sensor_update_interval}
-    
+
   - platform: total_daily_energy
     name: "Total Daily Energy"
     restore: true
@@ -188,7 +188,6 @@ sensor:
     accuracy_decimals: 3
     filters:
       - multiply: 0.001
-
 
 button:
   - platform: restart
@@ -203,7 +202,7 @@ button:
   - platform: safe_mode
     name: "Safe Mode"
     internal: false
-    entity_category: config  
+    entity_category: config
 
 switch:
   - platform: gpio
@@ -284,4 +283,3 @@ time:
               - text_sensor.template.publish:
                   id: device_last_restart
                   state: !lambda 'return id(sntp_time).now().strftime("%a %d %b %Y - %I:%M:%S %p");'
-                  
