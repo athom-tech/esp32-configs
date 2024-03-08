@@ -6,9 +6,11 @@ substitutions:
   device_description: "athom esp32-c3 smart plug"
   project_name: "Athom Technology.Smart Plug V3"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v1.0"
+  project_version: "v1.0.1"
   relay_restore_mode: RESTORE_DEFAULT_OFF
   sensor_update_interval: 10s
+  # Current Limit in Amps. AU Plug = 10. IL, BR, EU, UK, US Plug = 16.
+  current_limit : "16"
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ""
   # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
@@ -106,7 +108,7 @@ sensor:
   - platform: uptime
     name: "Uptime Sensor"
     entity_category: diagnostic
-    internal: True    
+    internal: true    
 
   - platform: wifi_signal
     name: "WiFi Signal"
@@ -131,7 +133,10 @@ sensor:
       filters:
           - throttle_average: ${sensor_update_interval}
           - lambda: if (x < 0.060) return 0.0; else return x;   #For the chip will report less than 3w power when no load is connected
-
+      on_value_range:
+        - above: ${current_limit}
+          then:
+            - switch.turn_off: relay
 
     voltage:
       name: "Voltage"
@@ -153,7 +158,6 @@ sensor:
         - throttle_average: ${sensor_update_interval}
         # Multiplication factor from W to kW is 0.001
         - multiply: 0.001
-        - filter_out: nan
       on_value:
         then:
           - lambda: |-
@@ -161,6 +165,7 @@ sensor:
               float current_energy_value = id(energy).state;
               id(total_energy) += current_energy_value - previous_energy_value;
               previous_energy_value = current_energy_value;
+              id(total_energy_sensor).update();
 
   - platform: template
     name: "Total Energy"
@@ -184,15 +189,19 @@ sensor:
 
 
 button:
+  - platform: restart
+    name: "Restart"
+    entity_category: config
+
   - platform: factory_reset
-    name: "Restart with Factory Default Settings"
+    name: "Factory Reset"
     id: Reset
     entity_category: config
-    
+
   - platform: safe_mode
     name: "Safe Mode"
     internal: false
-    entity_category: config    
+    entity_category: config  
 
 switch:
   - platform: gpio
