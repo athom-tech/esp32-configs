@@ -103,6 +103,7 @@ binary_sensor:
           - ON for at least 4s
         then:
           - button.press: Reset
+
 sensor:
   - platform: uptime
     name: "Uptime Sensor"
@@ -125,13 +126,13 @@ sensor:
       - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
     unit_of_measurement: "%"
     entity_category: diagnostic
-    
+
   - platform: cse7766
     current:
       name: "Current"
       filters:
-          - throttle_average: ${sensor_update_interval}
-          - lambda: if (x < 0.060) return 0.0; else return x;   #For the chip will report less than 3w power when no load is connected
+        - throttle_average: ${sensor_update_interval}
+        - lambda: if (x < 0.060) return 0.0; else return x;   #For the chip will report less than 3w power when no load is connected
       on_value_range:
         - above: ${current_limit}
           then:
@@ -140,25 +141,23 @@ sensor:
     voltage:
       name: "Voltage"
       filters:
-          - throttle_average: ${sensor_update_interval}
+        - throttle_average: ${sensor_update_interval}
 
     power:
       name: "Power"
       id: power_sensor
       filters:
-          - throttle_average: ${sensor_update_interval}
-          - lambda: if (x < 3.0) return 0.0; else return x;    #For the chip will report less than 3w power when no load is connected
-
+        - throttle_average: ${sensor_update_interval}
+        - lambda: if (x < 3.0) return 0.0; else return x;    #For the chip will report less than 3w power when no load is connected
 
     energy:
       name: "Energy"
       id: energy
       unit_of_measurement: kWh
       filters:
-        - throttle_average: ${sensor_update_interval}
+        - throttle: ${sensor_update_interval}
         # Multiplication factor from W to kW is 0.001
         - multiply: 0.001
-        - filter_out: nan
       on_value:
         then:
           - lambda: |-
@@ -167,6 +166,15 @@ sensor:
               id(total_energy) += current_energy_value - previous_energy_value;
               previous_energy_value = current_energy_value;
               id(total_energy_sensor).update();
+
+    apparent_power:
+      name: "Apparent Power"
+      filters:
+        - throttle_average: ${sensor_update_interval}
+    power_factor:
+      name: "Power Factor"
+      filters:
+        - throttle_average: ${sensor_update_interval}
 
   - platform: template
     name: "Total Energy"
@@ -206,7 +214,7 @@ button:
 
 switch:
   - platform: gpio
-    name: "Power"
+    name: "Switch"
     pin: GPIO5
     id: relay
     restore_mode: ${relay_restore_mode}
@@ -234,7 +242,7 @@ text_sensor:
 
   #  Creates a sensor showing when the device was last restarted
   - platform: template
-    name: 'Device Last Restart'
+    name: 'Last Restart'
     id: device_last_restart
     icon: mdi:clock
     entity_category: diagnostic
@@ -242,7 +250,7 @@ text_sensor:
 
   #  Creates a sensor of the uptime of the device, in formatted days, hours, minutes and seconds
   - platform: template
-    name: "Device Uptime"
+    name: "Uptime"
     entity_category: diagnostic
     lambda: |-
       int seconds = (id(uptime_sensor).state);
@@ -264,7 +272,7 @@ text_sensor:
         return { (String(seconds) +"s").c_str() };
       }
     icon: mdi:clock-start
-    
+
 time:
   - platform: sntp
     id: sntp_time
