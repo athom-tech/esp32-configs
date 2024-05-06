@@ -6,7 +6,7 @@ substitutions:
   device_description: "athom esp32-c3 smart plug"
   project_name: "Athom Technology.Smart Plug V3"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v1.0.1"
+  project_version: "v1.0.2"
   relay_restore_mode: RESTORE_DEFAULT_OFF
   sensor_update_interval: 10s
   # Current Limit in Amps. AU Plug = 10. IL, BR, EU, UK, US Plug = 16.
@@ -21,6 +21,7 @@ substitutions:
 esphome:
   name: "${name}"
   friendly_name: "${friendly_name}"
+  comment: "${device_description}"  
   area: "${room}"  
   name_add_mac_suffix: true
   project:
@@ -48,6 +49,8 @@ ota:
 
 logger:
   baud_rate: 0
+  logs:
+    component: ERROR # Fix for issue https://github.com/esphome/issues/issues/4717 "Component xxxxxx took a long time for an operation"  
 
 mdns:
   disabled: false
