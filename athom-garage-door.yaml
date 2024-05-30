@@ -6,7 +6,6 @@ substitutions:
   project_name: "Athom Technology.Garage Door Opener"
   project_version: "v2.0.1"
   dns_domain: ""
-  # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
   timezone: ""
   wifi_fast_connect: "false"
 
