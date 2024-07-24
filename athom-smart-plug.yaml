@@ -116,7 +116,7 @@ sensor:
   - platform: wifi_signal
     name: "WiFi Signal dB"
     id: wifi_signal_db
-    update_interval: "${update_interval}"
+    update_interval: 60s
     entity_category: "diagnostic"
 
   - platform: copy
