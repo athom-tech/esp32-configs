@@ -62,19 +62,19 @@ sensor:
     internal: true
 
   - platform: wifi_signal
-    name: "WiFi Signal"
+    name: "WiFi Signal dB"
     id: wifi_signal_db
     update_interval: 60s
-    entity_category: diagnostic
-    internal: true
+    entity_category: "diagnostic"
 
   - platform: copy
     source_id: wifi_signal_db
-    name: "WiFi Strength"
+    name: "WiFi Signal Percent"
     filters:
       - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
-    unit_of_measurement: "%"
-    entity_category: diagnostic
+    unit_of_measurement: "Signal %"
+    entity_category: "diagnostic"
+    device_class: ""
 
 binary_sensor:
   - platform: status
