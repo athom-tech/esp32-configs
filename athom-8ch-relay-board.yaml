@@ -1,0 +1,382 @@
+substitutions:
+  name: "athom-8ch-relay-board"
+  friendly_name: "Athom 8CH Relay Board"
+  room: ""
+  device_description: "athom esp32 8ch relay board"
+  project_name: "Athom Technology.ESP32 8CH Relay Board"
+
+  project_version: "v2.0.1"
+  update_interval: 60s
+  # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
+  dns_domain: ""
+  # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
+  timezone: ""
+  # Enables faster network connections, with last connected SSID being connected to and no full scan for SSID being undertaken
+  wifi_fast_connect: "false"
+  relay1_restore_mode: RESTORE_DEFAULT_OFF
+  relay2_restore_mode: RESTORE_DEFAULT_OFF
+  relay3_restore_mode: RESTORE_DEFAULT_OFF
+  relay4_restore_mode: RESTORE_DEFAULT_OFF
+  relay5_restore_mode: RESTORE_DEFAULT_OFF
+  relay6_restore_mode: RESTORE_DEFAULT_OFF
+  relay7_restore_mode: RESTORE_DEFAULT_OFF
+  relay8_restore_mode: RESTORE_DEFAULT_OFF
+
+esphome:
+  name: "${name}"
+  friendly_name: "${friendly_name}"
+  area: "${room}"
+  name_add_mac_suffix: true
+  min_version: 2024.6.0
+  project:
+    name: "${project_name}"
+    version: "${project_version}"
+  platformio_options:
+    board_build.flash_mode: dio
+
+esp32:
+  board: esp32dev
+  flash_size: 4MB
+  framework:
+    type: arduino
+
+preferences:
+  flash_write_interval: 5min
+
+# Enable logging
+logger:
+
+mdns:
+  disabled: false
+
+web_server:
+  port: 80
+
+# Enable Home Assistant API
+api:
+
+ota:
+  - platform: esphome
+
+wifi:
+  # This spawns an AP with the device name and mac address with no password.
+  ap: {}
+  # Allow rapid re-connection to previously connect WiFi SSID, skipping scan of all SSID
+  fast_connect: "${wifi_fast_connect}"
+  # Define dns domain / suffix to add to hostname
+  domain: "${dns_domain}"
+
+captive_portal:
+
+dashboard_import:
+  package_import_url: github://athom-tech/esp32-configs/athom-8ch-relay-board.yaml
+
+remote_receiver:
+  pin: GPIO17
+  dump: rc_switch
+
+binary_sensor:
+  - platform: status
+    name: "Status"
+    entity_category: "diagnostic"
+
+  - platform: gpio
+    pin:
+      number: GPIO26
+      mode:
+        input: true
+      inverted: true
+    name: "Power Button1"
+    disabled_by_default: true
+    on_multi_click:
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.2s
+        then:
+          - switch.toggle: relay1
+      - timing:
+        - ON for at least 4s
+        then:
+          - button.press: Reset
+  - platform: gpio
+    pin:
+      number: GPIO25
+      mode:
+        input: true
+      inverted: true
+    name: "Power Button2"
+    disabled_by_default: true
+    on_multi_click:
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.2s
+        then:
+          - switch.toggle: relay2
+      - timing:
+        - ON for at least 4s
+        then:
+          - button.press: Reset
+  - platform: gpio
+    pin:
+      number: GPIO33
+      mode:
+        input: true
+      inverted: true
+    name: "Power Button3"
+    disabled_by_default: true
+    on_multi_click:
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.2s
+        then:
+          - switch.toggle: relay3
+      - timing:
+        - ON for at least 4s
+        then:
+          - button.press: Reset
+  - platform: gpio
+    pin:
+      number: GPIO32
+      mode:
+        input: true
+      inverted: true
+    name: "Power Button4"
+    disabled_by_default: true
+    on_multi_click:
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.2s
+        then:
+          - switch.toggle: relay4
+      - timing:
+        - ON for at least 4s
+        then:
+          - button.press: Reset
+  - platform: gpio
+    pin:
+      number: GPIO35
+      mode:
+        input: true
+      inverted: true
+    name: "Power Button5"
+    disabled_by_default: true
+    on_multi_click:
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.2s
+        then:
+          - switch.toggle: relay5
+      - timing:
+        - ON for at least 4s
+        then:
+          - button.press: Reset
+  - platform: gpio
+    pin:
+      number: GPIO34
+      mode:
+        input: true
+      inverted: true
+    name: "Power Button6"
+    disabled_by_default: true
+    on_multi_click:
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.2s
+        then:
+          - switch.toggle: relay6
+      - timing:
+        - ON for at least 4s
+        then:
+          - button.press: Reset
+  - platform: gpio
+    pin:
+      number: GPIO39
+      mode:
+        input: true
+      inverted: true
+    name: "Power Button7"
+    disabled_by_default: true
+    on_multi_click:
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.2s
+        then:
+          - switch.toggle: relay7
+      - timing:
+        - ON for at least 4s
+        then:
+          - button.press: Reset
+  - platform: gpio
+    pin:
+      number: GPIO36
+      mode:
+        input: true
+      inverted: true
+    name: "Power Button8"
+    disabled_by_default: true
+    on_multi_click:
+      - timing:
+        - ON for at most 1s
+        - OFF for at least 0.2s
+        then:
+          - switch.toggle: relay8
+      - timing:
+        - ON for at least 4s
+        then:
+          - button.press: Reset
+sensor:
+  - platform: uptime
+    name: "Uptime Sensor"
+    id: uptime_sensor
+    entity_category: "diagnostic"
+    internal: true
+
+  - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
+    name: "WiFi Signal dB"
+    id: wifi_signal_db
+    update_interval: "${update_interval}"
+    entity_category: "diagnostic"
+
+  - platform: copy # Reports the WiFi signal strength in %
+    source_id: wifi_signal_db
+    name: "WiFi Signal Percent"
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "Signal %"
+    entity_category: "diagnostic"
+    device_class: ""
+
+button:
+  - platform: restart
+    name: "Restart"
+    entity_category: "config"
+
+  - platform: factory_reset
+    name: "Factory Reset"
+    id: Reset
+    entity_category: "config"
+
+  - platform: safe_mode
+    name: "Safe Mode"
+    internal: false
+    entity_category: "config"
+
+switch:
+  # Relay
+  - platform: gpio
+    name: "Relay1"
+    pin: GPIO27
+    id: relay1
+    restore_mode: ${relay1_restore_mode}
+
+  - platform: gpio
+    name: "Relay2"
+    pin: GPIO14
+    id: relay2
+    restore_mode: ${relay2_restore_mode}
+
+  - platform: gpio
+    name: "Relay3"
+    pin: GPIO12
+    id: relay3
+    restore_mode: ${relay3_restore_mode}
+
+  - platform: gpio
+    name: "Relay4"
+    pin: GPIO13
+    id: relay4
+    restore_mode: ${relay4_restore_mode}
+
+  - platform: gpio
+    name: "Relay5"
+    pin: GPIO2
+    id: relay5
+    restore_mode: ${relay5_restore_mode}
+
+  - platform: gpio
+    name: "Relay6"
+    pin: GPIO4
+    id: relay6
+    restore_mode: ${relay6_restore_mode}
+
+  - platform: gpio
+    name: "Relay7"
+    pin: GPIO5
+    id: relay7
+    restore_mode: ${relay7_restore_mode}
+
+  - platform: gpio
+    name: "Relay8"
+    pin: GPIO18
+    id: relay8
+    restore_mode: ${relay8_restore_mode}
+
+light:
+  - platform: status_led
+    name: "Status LED"
+    disabled_by_default: true
+    pin: GPIO15
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      entity_category: "diagnostic"
+    ssid:
+      name: "Connected SSID"
+      entity_category: "diagnostic"
+    mac_address:
+      name: "Mac Address"
+      entity_category: "diagnostic"
+
+  #  Creates a sensor showing when the device was last restarted
+  - platform: template
+    name: 'Last Restart'
+    id: device_last_restart
+    icon: mdi:clock
+    entity_category: "diagnostic"
+#    device_class: timestamp
+
+  #  Creates a sensor of the uptime of the device, in formatted days, hours, minutes and seconds
+  - platform: template
+    name: "Uptime"
+    entity_category: "diagnostic"
+    lambda: |-
+      int seconds = (id(uptime_sensor).state);
+      int days = seconds / (24 * 3600);
+      seconds = seconds % (24 * 3600);
+      int hours = seconds / 3600;
+      seconds = seconds % 3600;
+      int minutes = seconds /  60;
+      seconds = seconds % 60;
+      if ( days > 3650 ) {
+        return { "Starting up" };
+      } else if ( days ) {
+        return { (String(days) +"d " + String(hours) +"h " + String(minutes) +"m "+ String(seconds) +"s").c_str() };
+      } else if ( hours ) {
+        return { (String(hours) +"h " + String(minutes) +"m "+ String(seconds) +"s").c_str() };
+      } else if ( minutes ) {
+        return { (String(minutes) +"m "+ String(seconds) +"s").c_str() };
+      } else {
+        return { (String(seconds) +"s").c_str() };
+      }
+    icon: mdi:clock-start
+
+time:
+  - platform: sntp
+    id: sntp_time
+  # Define the timezone of the device
+    timezone: "${timezone}"
+  # Change sync interval from default 5min to 6 hours
+    update_interval: 360min    
+  # Publish the time the device was last restarted
+    on_time_sync:
+      then:
+        # Update last restart time, but only once.
+        - if:
+            condition:
+              lambda: 'return id(device_last_restart).state == "";'
+            then:
+              - text_sensor.template.publish:
+                  id: device_last_restart
+                  state: !lambda 'return id(sntp_time).now().strftime("%a %d %b %Y - %I:%M:%S %p");'
