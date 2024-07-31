@@ -1,0 +1,338 @@
+substitutions:
+  name: "athom-energy-monitor"
+  friendly_name: "Athom Energy Monitor"
+  # Allows ESP device to be automatically lined to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc
+  room: ""
+  device_description: "athom bl0906 energy monitor (2 channels)"
+  project_name: "Athom Technology.Athom Energy Monitor(2 Channels)"
+  project_version: "2.0.1"
+  update_interval: 5s
+  # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
+  dns_domain: ""
+  # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
+  timezone: ""
+  # Enables faster network connections, with last connected SSID being connected to and no full scan for SSID being undertaken
+  wifi_fast_connect: "false"
+
+#############################ESP32C3###########################
+  bl0906_tx_pin: GPIO7
+  bl0906_rx_pin: GPIO8
+  button_pin:    GPIO9
+  led_pin:       GPIO10
+  clk_pin:       GPIO2
+  mosi_pin:      GPIO3
+  backlight_pin: GPIO18
+  reset_pin:     GPIO4
+  dc_pin:        GPIO5
+  cs_pin:        GPIO6
+#############################ESP32C3###########################
+
+esphome:
+  name: "${name}"
+  friendly_name: "${friendly_name}"
+  area: "${room}"
+  name_add_mac_suffix: true
+  min_version: 2024.6.0
+  project:
+    name: "${project_name}"
+    version: "${project_version}"
+
+esp32:
+  board: esp32-c3-devkitm-1
+  flash_size: 4MB
+  variant: ESP32C3
+  framework:
+    type: arduino
+    version: recommended
+
+preferences:
+  flash_write_interval: 5min
+
+api:
+  # reboot_timeout: 0s
+
+ota:
+  - platform: esphome
+
+logger:
+  baud_rate: 115200
+  # level: VERY_VERBOSE
+  hardware_uart: UART0
+
+mdns:
+  disabled: false
+
+web_server:
+  port: 80
+
+wifi:
+  ap: {}
+  fast_connect: "${wifi_fast_connect}"
+  domain: "${dns_domain}"
+
+captive_portal:
+
+dashboard_import:
+  package_import_url: github://athom-tech/esp32-configs/athom-energy-monitor-x2.yaml
+
+external_components:
+  - source: github://athom-tech/esp32-configs@main
+    components: bl0906
+    refresh: 0s
+
+globals:
+  - id: id_Energy_sum_persist
+    type: float
+    restore_value: yes
+    initial_value: '0.0'
+  - id: id_Energy_sum_lastvalue
+    type: float
+    restore_value: no
+    initial_value: '0.0'
+
+  - id: id_Energy_1_persist
+    type: float
+    restore_value: yes
+    initial_value: '0.0'
+  - id: id_Energy_1_lastvalue
+    type: float
+    restore_value: no
+    initial_value: '0.0'
+
+  - id: id_Energy_2_persist
+    type: float
+    restore_value: yes
+    initial_value: '0.0'
+  - id: id_Energy_2_lastvalue
+    type: float
+    restore_value: no
+    initial_value: '0.0'
+
+uart:
+  tx_pin: "$bl0906_tx_pin"
+  rx_pin: "$bl0906_rx_pin"
+  baud_rate: 19200
+  id: uart_bl0906
+
+light:
+  - platform: status_led
+    name: "Status LED"
+    id: blue_led
+    disabled_by_default: true
+    pin: $led_pin
+
+binary_sensor:
+  - platform: status
+    name: "Status"
+    entity_category: diagnostic
+
+  - platform: gpio
+    pin:
+      number: "$button_pin"
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Power Button"
+    disabled_by_default: true
+    on_multi_click:
+      - timing:
+        - ON for at least 4s
+        then:
+          - button.press: Reset
+
+sensor:
+  - platform: uptime
+    name: "Uptime Sensor"
+    id: uptime_sensor
+    entity_category: diagnostic
+    internal: true
+
+  - platform: wifi_signal
+    name: "WiFi Signal dB"
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: "diagnostic"
+
+  - platform: copy
+    source_id: wifi_signal_db
+    name: "WiFi Signal Percent"
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "Signal %"
+    entity_category: "diagnostic"
+    device_class: ""
+
+  - platform: bl0906
+    update_interval: "${update_interval}"
+    Frequency:
+      name: 'Frequency'
+      id: 'Frequency'
+    Temperature:
+      name: 'Temperature'
+      id: 'Temperature'
+    Voltage:
+      name: 'Voltage'
+      id: 'Voltage'
+    Current_1:
+      name: 'Current_1'
+      id: 'Current_1'
+    Current_2:
+      name: 'Current_2'
+      id: 'Current_2'
+    Power_1:
+      name: 'Power_1'
+      id: 'Power_1'
+    Power_2:
+      name: 'Power_2'
+      id: 'Power_2'
+    Energy_1:
+      id: 'Energy_1'
+    Energy_2:
+      id: 'Energy_2'
+    Energy_sum:
+      id: 'Energy_sum'
+    Power_sum:
+      name: 'Power_sum'
+      id: 'Power_sum'
+
+  - platform: copy
+    name: 'Energy_sum'
+    id: Energy_sum_persist
+    source_id: Energy_sum
+    filters:
+      - lambda: |-
+          if(id(id_Energy_sum_lastvalue) == 0.0  )
+          {
+            id(id_Energy_sum_lastvalue) = id(Energy_sum).state;
+          }
+          if(x < id(id_Energy_sum_persist))
+          {
+            float delta =  x - id(id_Energy_sum_lastvalue);
+            id(id_Energy_sum_persist) += delta;
+            id(id_Energy_sum_lastvalue) = x;
+          }
+          else
+          {
+            id(id_Energy_sum_persist) = x;
+          }
+          return id(id_Energy_sum_persist);
+
+  - platform: copy
+    name: 'Energy_1'
+    id: Energy_1_persist
+    source_id: Energy_1
+    filters:
+      - lambda: |-
+          if(id(id_Energy_1_lastvalue) == 0.0  )
+          {
+            id(id_Energy_1_lastvalue) = id(Energy_1).state;
+          }
+          if(x < id(id_Energy_1_persist))
+          {
+            float delta =  x - id(id_Energy_1_lastvalue);
+            id(id_Energy_1_persist) += delta;
+            id(id_Energy_1_lastvalue) = x;
+          }
+          else
+          {
+            id(id_Energy_1_persist) = x;
+          }
+          return id(id_Energy_1_persist);
+
+  - platform: copy
+    name: 'Energy_2'
+    id: Energy_2_persist
+    source_id: Energy_2
+    filters:
+      - lambda: |-
+          if(id(id_Energy_2_lastvalue) == 0.0  )
+          {
+            id(id_Energy_2_lastvalue) = id(Energy_2).state;
+          }
+          if(x < id(id_Energy_2_persist))
+          {
+            float delta =  x - id(id_Energy_2_lastvalue);
+            id(id_Energy_2_persist) += delta;
+            id(id_Energy_2_lastvalue) = x;
+          }
+          else
+          {
+            id(id_Energy_2_persist) = x;
+          }
+          return id(id_Energy_2_persist);
+
+button:
+  - platform: restart
+    name: "Restart"
+    entity_category: config
+
+  - platform: factory_reset
+    name: "Factory Reset"
+    id: Reset
+    entity_category: config
+
+  - platform: safe_mode
+    name: "Safe Mode"
+    internal: false
+    entity_category: config
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      id: ip_address
+      entity_category: diagnostic
+    ssid:
+      name: "Connected SSID"
+      id: ssid
+      entity_category: diagnostic
+    mac_address:
+      name: "Mac Address"
+      id: mac_address
+      entity_category: diagnostic
+
+  - platform: template
+    name: "Last Restart"
+    id: device_last_restart
+    icon: mdi:clock
+    entity_category: diagnostic
+    device_class: timestamp
+
+  - platform: template
+    name: "Uptime"
+    id: uptimes
+    icon: mdi:clock-start
+    entity_category: diagnostic
+    lambda: |-
+      int seconds = (id(uptime_sensor).state);
+      int days = seconds / (24 * 3600);
+      seconds = seconds % (24 * 3600);
+      int hours = seconds / 3600;
+      seconds = seconds % 3600;
+      int minutes = seconds /  60;
+      seconds = seconds % 60;
+      if ( days > 3650 ) {
+        return { "Starting up" };
+      } else if ( days ) {
+        return { (String(days) +"d " + String(hours) +"h " + String(minutes) +"m "+ String(seconds) +"s").c_str() };
+      } else if ( hours ) {
+        return { (String(hours) +"h " + String(minutes) +"m "+ String(seconds) +"s").c_str() };
+      } else if ( minutes ) {
+        return { (String(minutes) +"m "+ String(seconds) +"s").c_str() };
+      } else {
+        return { (String(seconds) +"s").c_str() };
+      }
+
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: "${timezone}"
+    update_interval: 360min
+    on_time_sync:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(device_last_restart).state == "";'
+            then:
+              - text_sensor.template.publish:
+                  id: device_last_restart
+                  state: !lambda 'return id(sntp_time).now().strftime("%a %d %b %Y - %I:%M:%S %p");'
