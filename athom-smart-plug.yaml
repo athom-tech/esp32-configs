@@ -32,7 +32,7 @@ substitutions:
   # Define logging level: NONE, ERROR, WARN, INFO, DEBUG (Default), VERBOSE, VERY_VERBOSE
   log_level: "INFO"
   # Hide the ENERGY sensor that shows kWh consumed, but with no time period associated with it. Resets when device restarted and reflashed.
-  hide_energy_sensor: true
+  hide_energy_sensor: "true"
   # Enable or disable the use of IPv6 networking on the device
   ipv6_enable: "false"
 
