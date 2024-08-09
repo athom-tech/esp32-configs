@@ -1,13 +1,19 @@
 substitutions:
+  # Default name
   name: "athom-smart-plug-v3"
+  # Default friendly name   
   friendly_name: "Athom Plug V3"
-  # Allows ESP device to be automatically lined to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc  
+  # Allows ESP device to be automatically linked to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc  
   room: ""
+  # Description as appears in ESPHome & top of webserver page
   device_description: "athom esp32-c3 smart plug"
+  # Project Name
   project_name: "Athom Technology.Smart Plug V3"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v1.0.2"
+  project_version: "v1.0.3"
+   # Restore the relay (GPO switch) upon reboot to state:
   relay_restore_mode: RESTORE_DEFAULT_OFF
+  # Set the update interval for sensors
   sensor_update_interval: 10s
   # Current Limit in Amps. AU Plug = 10. IL, BR, EU, UK, US Plug = 16.
   current_limit : "16"
@@ -15,12 +21,25 @@ substitutions:
   dns_domain: ""
   # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
   timezone: ""
+  # Set the duration between the sntp service polling ntp.org servers for an update
+  sntp_update_interval: 6h
+  # Network time servers for your region, enter from lowest to highest priority. To use local servers update as per zones or countries at: https://www.ntppool.org/zone/@
+  sntp_server_1: "0.pool.ntp.org"
+  sntp_server_2: "1.pool.ntp.org"
+  sntp_server_3: "2.pool.ntp.org"  
   # Enables faster network connections, with last connected SSID being connected to and no full scan for SSID being undertaken
   wifi_fast_connect: "false"
+  # Define logging level: NONE, ERROR, WARN, INFO, DEBUG (Default), VERBOSE, VERY_VERBOSE
+  log_level: "INFO"
+  # Hide the ENERGY sensor that shows kWh consumed, but with no time period associated with it. Resets when device restarted and reflashed.
+  hide_energy_sensor: "true"
+  # Enable or disable the use of IPv6 networking on the device
+  ipv6_enable: "false"
 
 esphome:
   name: "${name}"
   friendly_name: "${friendly_name}"
+  comment: "${device_description}"
   area: "${room}"  
   name_add_mac_suffix: true
   min_version: 2024.6.0
@@ -49,6 +68,7 @@ ota:
   - platform: esphome
 
 logger:
+  level: ${log_level}
   baud_rate: 0
 
 mdns:
@@ -56,6 +76,9 @@ mdns:
 
 web_server:
   port: 80
+
+network:
+  enable_ipv6: ${ipv6_enable}
 
 wifi:
   # This spawns an AP with the device name and mac address with no password.
@@ -279,8 +302,13 @@ time:
     id: sntp_time
   # Define the timezone of the device
     timezone: "${timezone}"
-  # Change sync interval from default 5min to 6 hours
-    update_interval: 360min    
+  # Change sync interval from default 5min to 6 hours (or as set in substitutions)
+    update_interval: ${sntp_update_interval}
+  # Set specific sntp servers to use
+    servers: 
+      - "${sntp_server_1}"
+      - "${sntp_server_2}"
+      - "${sntp_server_3}"    
   # Publish the time the device was last restarted
     on_time_sync:
       then:
