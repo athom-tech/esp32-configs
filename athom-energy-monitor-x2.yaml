@@ -72,6 +72,11 @@ wifi:
 
 captive_portal:
 
+improv_serial:
+
+esp32_improv:
+  authorizer: none
+
 dashboard_import:
   package_import_url: github://athom-tech/esp32-configs/athom-energy-monitor-x2.yaml
 
