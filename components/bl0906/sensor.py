@@ -28,7 +28,7 @@ CONFIG_SCHEMA = (
             cv.Optional("Temperature"): sensor.sensor_schema(
             accuracy_decimals = 0,
             device_class = "temperature",
-            unit_of_measurement = "℃"  
+            unit_of_measurement = "°C"
             ),
             cv.GenerateID(): cv.declare_id(BL0906),
             cv.Optional("Voltage"): sensor.sensor_schema(
