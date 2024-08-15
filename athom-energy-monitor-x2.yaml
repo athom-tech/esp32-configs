@@ -168,34 +168,42 @@ sensor:
 
   - platform: bl0906
     update_interval: "${update_interval}"
-    Frequency:
+    frequency:
       name: 'Frequency'
       id: 'Frequency'
-    Temperature:
+    temperature:
       name: 'Temperature'
       id: 'Temperature'
-    Voltage:
+    voltage:
       name: 'Voltage'
       id: 'Voltage'
-    Current_1:
-      name: 'Current_1'
-      id: 'Current_1'
-    Current_2:
-      name: 'Current_2'
-      id: 'Current_2'
-    Power_1:
-      name: 'Power_1'
-      id: 'Power_1'
-    Power_2:
-      name: 'Power_2'
-      id: 'Power_2'
-    Energy_1:
-      id: 'Energy_1'
-    Energy_2:
-      id: 'Energy_2'
-    Energy_sum:
+    channel_1:
+      current:
+        name: 'Current_1'
+        id: 'Current_1'
+      power:
+        name: 'Power_1'
+        id: 'Power_1'
+      energy:
+        id: 'Energy_1'
+        name: 'Energy_1_Internal'
+        internal: true
+    channel_2:
+      current:
+        name: 'Current_2'
+        id: 'Current_2'
+      power:
+        name: 'Power_2'
+        id: 'Power_2'
+      energy:
+        id: 'Energy_2'
+        name: 'Energy_2_Internal'
+        internal: true
+    total_energy:
       id: 'Energy_sum'
-    Power_sum:
+      name: 'Energy_sum'
+      internal: true
+    total_power:
       name: 'Power_sum'
       id: 'Power_sum'
 
