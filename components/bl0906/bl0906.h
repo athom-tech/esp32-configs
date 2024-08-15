@@ -1,41 +1,50 @@
 #pragma once
 
-#include "esphome/core/component.h"
-#include "esphome/components/uart/uart.h"
 #include "esphome/components/sensor/sensor.h"
+#include "esphome/components/uart/uart.h"
+#include "esphome/core/component.h"
 
 // https://www.belling.com.cn/media/file_object/bel_product/BL0906/datasheet/BL0906_V1.02_cn.pdf
 // https://www.belling.com.cn/media/file_object/bel_product/BL0906/guide/BL0906%20APP%20Note_V1.02.pdf
 
 namespace esphome {
 namespace bl0906 {
-  
-//Total power conversion
-static const float BL0906_WATT = 16*1.097*1.097*(20000+20000+20000+20000+20000)/(40.41259*((5.1+5.1)*1000/2000)*1*100*1*1000);
-//Total Energy conversion
-static const float BL0906_CF =16*4194304*0.032768*16/(3600000*16*(40.4125*((5.1+5.1)*1000/2000)*1*100*1*1000/(1.097*1.097*(20000+20000+20000+20000+20000))));
-//Frequency conversion
+
+// Total power conversion
+static const float BL0906_WATT = 16 * 1.097 * 1.097 * (20000 + 20000 + 20000 + 20000 + 20000) /
+                                 (40.41259 * ((5.1 + 5.1) * 1000 / 2000) * 1 * 100 * 1 * 1000);
+// Total Energy conversion
+static const float BL0906_CF = 16 * 4194304 * 0.032768 * 16 /
+                               (3600000 * 16 *
+                                (40.4125 * ((5.1 + 5.1) * 1000 / 2000) * 1 * 100 * 1 * 1000 /
+                                 (1.097 * 1.097 * (20000 + 20000 + 20000 + 20000 + 20000))));
+// Frequency conversion
 static const float BL0906_FREF = 10000000;
-//Temperature conversion    
-static const float BL0906_TREF = 12.5/59-40;
-//Current conversion
-static const float BL0906_IREF = 1.097/(12875*1*(5.1+5.1)*1000/2000);
-//Voltage conversion
-static const float BL0906_UREF = 1.097*(20000+20000+20000+20000+20000)/(13162*1*100*1000);
-//Power conversion
-static const float BL0906_PREF = 1.097*1.097*(20000+20000+20000+20000+20000)/(40.41259*((5.1+5.1)*1000/2000)*1*100*1*1000); 
-//Energy conversion
-static const float BL0906_EREF = 4194304*0.032768*16/(3600000*16*(40.4125*((5.1+5.1)*1000/2000)*1*100*1*1000/(1.097*1.097*(20000+20000+20000+20000+20000))));
-//Current coefficient
-static const float BL0906_ki = 12875*1*(5.1+5.1)*1000/2000/1.097;
-//Power coefficient
-static const float BL0906_Kp=40.4125*((5.1+5.1)*1000/2000)*1*100*1*1000/1.097/1.097/(20000+20000+20000+20000+20000);
+// Temperature conversion
+static const float BL0906_TREF = 12.5 / 59 - 40;
+// Current conversion
+static const float BL0906_IREF = 1.097 / (12875 * 1 * (5.1 + 5.1) * 1000 / 2000);
+// Voltage conversion
+static const float BL0906_UREF = 1.097 * (20000 + 20000 + 20000 + 20000 + 20000) / (13162 * 1 * 100 * 1000);
+// Power conversion
+static const float BL0906_PREF = 1.097 * 1.097 * (20000 + 20000 + 20000 + 20000 + 20000) /
+                                 (40.41259 * ((5.1 + 5.1) * 1000 / 2000) * 1 * 100 * 1 * 1000);
+// Energy conversion
+static const float BL0906_EREF = 4194304 * 0.032768 * 16 /
+                                 (3600000 * 16 *
+                                  (40.4125 * ((5.1 + 5.1) * 1000 / 2000) * 1 * 100 * 1 * 1000 /
+                                   (1.097 * 1.097 * (20000 + 20000 + 20000 + 20000 + 20000))));
+// Current coefficient
+static const float BL0906_ki = 12875 * 1 * (5.1 + 5.1) * 1000 / 2000 / 1.097;
+// Power coefficient
+static const float BL0906_Kp = 40.4125 * ((5.1 + 5.1) * 1000 / 2000) * 1 * 100 * 1 * 1000 / 1.097 / 1.097 /
+                               (20000 + 20000 + 20000 + 20000 + 20000);
 
 struct DataPacket {  // NOLINT(altera-struct-pack-align)
   uint8_t l;
   uint8_t m;
   uint8_t h;
-  uint8_t checksum;   // checksum
+  uint8_t checksum;  // checksum
   uint8_t address;
 } __attribute__((packed));
 
@@ -118,20 +127,23 @@ class BL0906 : public PollingComponent, public uart::UARTDevice {
   float current_reference_ = BL0906_IREF;
 
   float energy_reference_ = BL0906_EREF;
-  
+
   float frequency_reference_ = BL0906_FREF;
-  
+
   float temperature_reference_ = BL0906_TREF;
-    
+
   static uint32_t to_uint32_t(ube24_t input);
 
   static int32_t to_int32_t(sbe24_t input);
 
   void read_data(const uint8_t address, const float reference, sensor::Sensor *sensor_);
 
-  void Bias_correction(const uint8_t address, const float measurements, const float Correction) ; 
+  void Bias_correction(const uint8_t address, const float measurements, const float Correction);
 
-  void gain_correction(const uint8_t address, const float measurements, const float Correction, const float coefficient) ;
+  void gain_correction(const uint8_t address, const float measurements, const float Correction,
+                       const float coefficient);
+
+  uint8_t current_channel_ = 0;
 };
 }  // namespace bl0906
 }  // namespace esphome

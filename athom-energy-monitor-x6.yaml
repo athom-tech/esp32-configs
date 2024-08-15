@@ -224,71 +224,91 @@ sensor:
 
   - platform: bl0906
     update_interval: "${update_interval}"
-    Frequency:
+    frequency:
       name: 'Frequency'
       id: 'Frequency'
-    Temperature:
+    temperature:
       name: 'Temperature'
       id: 'Temperature'
-    Voltage:
+    voltage:
       name: 'Voltage'
       id: 'Voltage'
-    Current_1:
-      name: 'Current_1'
-      id: 'Current_1'
-    Current_2:
-      name: 'Current_2'
-      id: 'Current_2'
-    Current_3:
-      name: 'Current_3'
-      id: 'Current_3'
-    Current_4:
-      name: 'Current_4'
-      id: 'Current_4'
-    Current_5:
-      name: 'Current_5'
-      id: 'Current_5'
-    Current_6:
-      name: 'Current_6'
-      id: 'Current_6'
-    Power_1:
-      name: 'Power_1'
-      id: 'Power_1'
-    Power_2:
-      name: 'Power_2'
-      id: 'Power_2'
-    Power_3:
-      name: 'Power_3'
-      id: 'Power_3'
-    Power_4:
-      name: 'Power_4'
-      id: 'Power_4'
-    Power_5:
-      name: 'Power_5'
-      id: 'Power_5'
-    Power_6:
-      name: 'Power_6'
-      id: 'Power_6'
-    Energy_1:
-      id: 'Energy_1'
-    Energy_2:
-      id: 'Energy_2'
-    Energy_3:
-      id: 'Energy_3'
-    Energy_4:
-      id: 'Energy_4'
-    Energy_5:
-      id: 'Energy_5'
-    Energy_6:
-      id: 'Energy_6'
-    Energy_sum:
+    channel_1:
+      current:
+        name: 'Current_1'
+        id: 'Current_1'
+      power:
+        name: 'Power_1'
+        id: 'Power_1'
+      energy:
+        id: 'Energy_1'
+        name: 'Energy_1_Internal'
+        internal: true
+    channel_2:
+      current:
+        name: 'Current_2'
+        id: 'Current_2'
+      power:
+        name: 'Power_2'
+        id: 'Power_2'
+      energy:
+        id: 'Energy_2'
+        name: 'Energy_2_Internal'
+        internal: true
+    channel_3:
+      current:
+        name: 'Current_3'
+        id: 'Current_3'
+      power:
+        name: 'Power_3'
+        id: 'Power_3'
+      energy:
+        id: 'Energy_3'
+        name: 'Energy_3_Internal'
+        internal: true
+    channel_4:
+      current:
+        name: 'Current_4'
+        id: 'Current_4'
+      power:
+        name: 'Power_4'
+        id: 'Power_4'
+      energy:
+        id: 'Energy_4'
+        name: 'Energy_4_Internal'
+        internal: true
+    channel_5:
+      current:
+        name: 'Current_5'
+        id: 'Current_5'
+      power:
+        name: 'Power_5'
+        id: 'Power_5'
+      energy:
+        id: 'Energy_5'
+        name: 'Energy_5_Internal'
+        internal: true
+    channel_6:
+      current:
+        name: 'Current_6'
+        id: 'Current_6'
+      power:
+        name: 'Power_6'
+        id: 'Power_6'
+      energy:
+        id: 'Energy_6'
+        name: 'Energy_6_Internal'
+        internal: true
+    total_energy:
+      name: 'Total_Energy'
       id: 'Energy_sum'
-    Power_sum:
-      name: 'Power_sum'
-      id: 'Power_sum'
+      internal: true
+    total_power:
+      name: 'Total_Power'
+      id: 'Total_Power'
 
   - platform: copy
-    name: 'Energy_sum'
+    name: 'Total_Energy'
     id: Energy_sum_persist
     source_id: Energy_sum
     filters:
@@ -373,7 +393,7 @@ sensor:
           {
             id(id_Energy_3_persist) = x;
           }
-          return id(id_Energy_3_persist);                    
+          return id(id_Energy_3_persist);
 
   - platform: copy
     name: 'Energy_4'
