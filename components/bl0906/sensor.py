@@ -39,7 +39,7 @@ CONFIG_SCHEMA = (
         {
             cv.GenerateID(): cv.declare_id(BL0906),
             cv.Optional(CONF_FREQUENCY): sensor.sensor_schema(
-                accuracy_decimals=2,
+                accuracy_decimals=0,
                 device_class=DEVICE_CLASS_FREQUENCY,
                 unit_of_measurement=UNIT_HERTZ,
             ),
