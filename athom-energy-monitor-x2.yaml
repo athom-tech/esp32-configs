@@ -200,15 +200,15 @@ sensor:
         name: 'Energy_2_Internal'
         internal: true
     total_energy:
+      name: 'Total_Energy'
       id: 'Energy_sum'
-      name: 'Energy_sum'
       internal: true
     total_power:
-      name: 'Power_sum'
-      id: 'Power_sum'
+      name: 'Total_Power'
+      id: 'Tatal_Power'
 
   - platform: copy
-    name: 'Energy_sum'
+    name: 'Total_Energy'
     id: Energy_sum_persist
     source_id: Energy_sum
     filters:
