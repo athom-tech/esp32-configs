@@ -5,14 +5,24 @@ substitutions:
   room: ""
   device_description: "athom bl0906 energy monitor (6 channels)"
   project_name: "Athom Technology.Athom Energy Monitor(6 Channels)"
-  project_version: "2.0.1"
+  project_version: "2.0.2"
   update_interval: 5s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ""
   # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
   timezone: ""
+  # Set the duration between the sntp service polling ntp.org servers for an update
+  sntp_update_interval: 6h
+  # Network time servers for your region, enter from lowest to highest priority. To use local servers update as per zones or countries at: https://www.ntppool.org/zone/@
+  sntp_server_1: "0.pool.ntp.org"
+  sntp_server_2: "1.pool.ntp.org"
+  sntp_server_3: "2.pool.ntp.org"  
   # Enables faster network connections, with last connected SSID being connected to and no full scan for SSID being undertaken
   wifi_fast_connect: "false"
+  # Define logging level: NONE, ERROR, WARN, INFO, DEBUG (Default), VERBOSE, VERY_VERBOSE
+  log_level: "DEBUG"
+  # Enable or disable the use of IPv6 networking on the device
+  ipv6_enable: "false"
 
 #############################ESP32C3###########################
   bl0906_tx_pin: GPIO7
@@ -76,7 +86,7 @@ ota:
 
 logger:
   baud_rate: 115200
-  # level: VERY_VERBOSE
+  level: ${log_level}
   hardware_uart: UART0
 
 mdns:
@@ -84,6 +94,9 @@ mdns:
 
 web_server:
   port: 80
+
+network:
+  enable_ipv6: ${ipv6_enable}
 
 wifi:
   ap: {}
@@ -526,10 +539,19 @@ text_sensor:
 time:
   - platform: sntp
     id: sntp_time
+  # Define the timezone of the device
     timezone: "${timezone}"
-    update_interval: 360min
+  # Change sync interval from default 5min to 6 hours (or as set in substitutions)
+    update_interval: ${sntp_update_interval}
+  # Set specific sntp servers to use
+    servers:
+      - "${sntp_server_1}"
+      - "${sntp_server_2}"
+      - "${sntp_server_3}"
+  # Publish the time the device was last restarted
     on_time_sync:
       then:
+        # Update last restart time, but only once.
         - if:
             condition:
               lambda: 'return id(device_last_restart).state == "";'

@@ -4,15 +4,24 @@ substitutions:
   room: ""
   device_description: "athom esp32 8ch relay board"
   project_name: "Athom Technology.ESP32 8CH Relay Board"
-
-  project_version: "v2.0.1"
+  project_version: "v2.0.2"
   update_interval: 60s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ""
   # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
   timezone: ""
+  # Set the duration between the sntp service polling ntp.org servers for an update
+  sntp_update_interval: 6h
+  # Network time servers for your region, enter from lowest to highest priority. To use local servers update as per zones or countries at: https://www.ntppool.org/zone/@
+  sntp_server_1: "0.pool.ntp.org"
+  sntp_server_2: "1.pool.ntp.org"
+  sntp_server_3: "2.pool.ntp.org"  
   # Enables faster network connections, with last connected SSID being connected to and no full scan for SSID being undertaken
   wifi_fast_connect: "false"
+  # Define logging level: NONE, ERROR, WARN, INFO, DEBUG (Default), VERBOSE, VERY_VERBOSE
+  log_level: "DEBUG"
+  # Enable or disable the use of IPv6 networking on the device
+  ipv6_enable: "false"
   relay1_restore_mode: RESTORE_DEFAULT_OFF
   relay2_restore_mode: RESTORE_DEFAULT_OFF
   relay3_restore_mode: RESTORE_DEFAULT_OFF
@@ -45,6 +54,8 @@ preferences:
 
 # Enable logging
 logger:
+  baud_rate: 115200
+  level: ${log_level}
 
 mdns:
   disabled: false
@@ -57,6 +68,9 @@ api:
 
 ota:
   - platform: esphome
+
+network:
+  enable_ipv6: ${ipv6_enable}
 
 wifi:
   # This spawns an AP with the device name and mac address with no password.
@@ -372,8 +386,13 @@ time:
     id: sntp_time
   # Define the timezone of the device
     timezone: "${timezone}"
-  # Change sync interval from default 5min to 6 hours
-    update_interval: 360min    
+  # Change sync interval from default 5min to 6 hours (or as set in substitutions)
+    update_interval: ${sntp_update_interval}
+  # Set specific sntp servers to use
+    servers:
+      - "${sntp_server_1}"
+      - "${sntp_server_2}"
+      - "${sntp_server_3}"   
   # Publish the time the device was last restarted
     on_time_sync:
       then:

@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  pull_request:
+
+jobs:
+  ci:
+    name: Building ${{ matrix.file }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        file:
+          - athom-2ch-relay-board.yaml
+          - athom-4ch-relay-board.yaml
+          - athom-8ch-relay-board.yaml
+          - athom-energy-monitor-x2.yaml
+          - athom-energy-monitor-x6.yaml
+          - athom-garage-door.yaml
+          - athom-mini-relay-v2.yaml
+          - athom-smart-plug.yaml
+          - athom-zigbee-gateway.yaml
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4.1.7
+      - name: Build ESPHome firmware to verify configuration
+        uses: esphome/build-action@v3.2.0
+        with:
+          yaml_file: ${{ matrix.file }}

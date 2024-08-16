@@ -7,6 +7,8 @@ substitutions:
   project_version: "v2.0.1"
   dns_domain: ""
   timezone: ""
+  # Define logging level: NONE, ERROR, WARN, INFO, DEBUG (Default), VERBOSE, VERY_VERBOSE
+  log_level: "DEBUG"
   # wifi_fast_connect: "false"
 
 esphome:
@@ -63,7 +65,8 @@ ethernet:
 
 # Enable logging
 logger:
-  level: DEBUG
+  baud_rate: 115200
+  level: ${log_level}
   
 # Enable Home Assistant API
 api:

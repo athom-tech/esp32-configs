@@ -24,7 +24,7 @@ substitutions:
   # Enables faster network connections, with last connected SSID being connected to and no full scan for SSID being undertaken
   wifi_fast_connect: "false"
   # Define logging level: NONE, ERROR, WARN, INFO, DEBUG (Default), VERBOSE, VERY_VERBOSE
-  log_level: "INFO"
+  log_level: "DEBUG"
   # Enable or disable the use of IPv6 networking on the device
   ipv6_enable: "false"
 
@@ -57,8 +57,9 @@ ota:
   - platform: esphome
 
 logger:
+  baud_rate: 115200
   level: ${log_level}
-  baud_rate: 0
+  hardware_uart: UART0
 
 mdns:
   disabled: false
