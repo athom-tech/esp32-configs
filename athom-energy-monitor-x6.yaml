@@ -1,5 +1,5 @@
 substitutions:
-  name: "athom-energy-monitor"
+  name: "athom-energy-monitor-x6"
   friendly_name: "Athom Energy Monitor"
   # Allows ESP device to be automatically lined to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc
   room: ""
