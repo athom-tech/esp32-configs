@@ -21,4 +21,4 @@ jobs:
           athom-smart-plug.yaml,
           athom-zigbee-gateway.yaml
       # CHANGEME: Set the name of your project here:
-      name: Template Project
+      name: Athom ESP32 Device
