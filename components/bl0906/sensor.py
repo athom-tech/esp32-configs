@@ -27,7 +27,19 @@ from esphome.const import (
     UNIT_KILOWATT_HOURS,
     UNIT_VOLT,
     UNIT_WATT,
+    ICON_CURRENT_AC,
+    ICON_POWER,
+    ICON_THERMOMETER,
 )
+
+# Import ICONS not included in esphome's const.py, from the local components const.py
+from .const import (
+    ICON_ENERGY,
+    ICON_FREQUENCY,
+    ICON_VOLTAGE,
+)
+
+CODEOWNERS = ["@athom-tech". "tarontop"]
 
 DEPENDENCIES = ["uart"]
 AUTO_LOAD = ["bl0906"]
@@ -42,26 +54,31 @@ CONFIG_SCHEMA = (
         {
             cv.GenerateID(): cv.declare_id(BL0906),
             cv.Optional(CONF_FREQUENCY): sensor.sensor_schema(
+                icon=ICON_FREQUENCY,
                 accuracy_decimals=0,
                 device_class=DEVICE_CLASS_FREQUENCY,
                 unit_of_measurement=UNIT_HERTZ,
             ),
             cv.Optional(CONF_TEMPERATURE): sensor.sensor_schema(
+                icon=ICON_THERMOMETER,
                 accuracy_decimals=0,
                 device_class=DEVICE_CLASS_TEMPERATURE,
                 unit_of_measurement=UNIT_CELSIUS,
             ),
             cv.Optional(CONF_VOLTAGE): sensor.sensor_schema(
+                icon=ICON_VOLTAGE,
                 accuracy_decimals=1,
                 device_class=DEVICE_CLASS_VOLTAGE,
                 unit_of_measurement=UNIT_VOLT,
             ),
             cv.Optional(CONF_TOTAL_POWER): sensor.sensor_schema(
+                icon=ICON_POWER,
                 accuracy_decimals=3,
                 device_class=DEVICE_CLASS_POWER,
                 unit_of_measurement=UNIT_WATT,
             ),
             cv.Optional(CONF_TOTAL_ENERGY): sensor.sensor_schema(
+                icon=ICON_ENERGY,
                 accuracy_decimals=3,
                 device_class=DEVICE_CLASS_ENERGY,
                 state_class=STATE_CLASS_TOTAL,
@@ -76,6 +93,7 @@ CONFIG_SCHEMA = (
                     {
                         cv.Optional(CONF_CURRENT): cv.maybe_simple_value(
                             sensor.sensor_schema(
+                                icon=ICON_CURRENT_AC,
                                 accuracy_decimals=3,
                                 device_class=DEVICE_CLASS_CURRENT,
                                 unit_of_measurement=UNIT_AMPERE,
@@ -84,6 +102,7 @@ CONFIG_SCHEMA = (
                         ),
                         cv.Optional(CONF_POWER): cv.maybe_simple_value(
                             sensor.sensor_schema(
+                                icon=ICON_POWER,
                                 accuracy_decimals=0,
                                 device_class=DEVICE_CLASS_POWER,
                                 unit_of_measurement=UNIT_WATT,
@@ -92,6 +111,7 @@ CONFIG_SCHEMA = (
                         ),
                         cv.Optional(CONF_ENERGY): cv.maybe_simple_value(
                             sensor.sensor_schema(
+                                icon=ICON_ENERGY,
                                 accuracy_decimals=3,
                                 device_class=DEVICE_CLASS_ENERGY,
                                 unit_of_measurement=UNIT_KILOWATT_HOURS,
