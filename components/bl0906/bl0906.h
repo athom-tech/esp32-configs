@@ -3,6 +3,8 @@
 #include "esphome/components/sensor/sensor.h"
 #include "esphome/components/uart/uart.h"
 #include "esphome/core/component.h"
+#include "esphome/core/datatypes.h"
+#include "esphome/core/automation.h"
 
 // https://www.belling.com.cn/media/file_object/bel_product/BL0906/datasheet/BL0906_V1.02_cn.pdf
 // https://www.belling.com.cn/media/file_object/bel_product/BL0906/guide/BL0906%20APP%20Note_V1.02.pdf
@@ -60,6 +62,11 @@ struct sbe24_t {  // NOLINT(readability-identifier-naming,altera-struct-pack-ali
   int8_t h;
 } __attribute__((packed));
 
+typedef enum process_state_ { PROCESS_DONE = 0 } process_state;
+template<typename... Ts> class ResetEnergyAction;
+class BL0906;
+typedef void (BL0906::*ActionCallbackFuncPtr)(void);
+
 class BL0906 : public PollingComponent, public uart::UARTDevice {
  public:
   void set_voltage_sensor(sensor::Sensor *voltage_sensor) { voltage_sensor_ = voltage_sensor; }
@@ -92,6 +99,8 @@ class BL0906 : public PollingComponent, public uart::UARTDevice {
   void dump_config() override;
 
  protected:
+  process_state m_process_state{PROCESS_DONE};
+  template<typename... Ts> friend class ResetEnergyAction;
   sensor::Sensor *voltage_sensor_{nullptr};
   sensor::Sensor *current_sensor_1_{nullptr};
   sensor::Sensor *current_sensor_2_{nullptr};
@@ -136,6 +145,8 @@ class BL0906 : public PollingComponent, public uart::UARTDevice {
 
   static int32_t to_int32_t(sbe24_t input);
 
+  void reset_energy();
+
   void read_data(const uint8_t address, const float reference, sensor::Sensor *sensor_);
 
   void Bias_correction(const uint8_t address, const float measurements, const float Correction);
@@ -144,6 +155,22 @@ class BL0906 : public PollingComponent, public uart::UARTDevice {
                        const float coefficient);
 
   uint8_t current_channel_ = 0;
+  int addActionCallBack(ActionCallbackFuncPtr ptrFunc);
+  void handleActionCallback();
+  bool isNeedHandleActionCallback() { return (m_vecActionCallback.size() > 0); }
+
+ private:
+  std::vector<ActionCallbackFuncPtr> m_vecActionCallback{};
+};
+
+template<typename... Ts> class ResetEnergyAction : public Action<Ts...> {
+ public:
+  ResetEnergyAction(BL0906 *bl0906) : bl0906_(bl0906) {}
+
+  void play(Ts... x) override { this->bl0906_->addActionCallBack(&BL0906::reset_energy);}
+
+ protected:
+  BL0906 *bl0906_;
 };
 }  // namespace bl0906
 }  // namespace esphome

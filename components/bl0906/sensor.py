@@ -1,5 +1,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
+from esphome import automation
+from esphome.automation import maybe_simple_id
 from esphome.components import sensor, uart
 from esphome.const import (
     CONF_CHANNEL,
@@ -33,6 +35,7 @@ CONF_TOTAL_ENERGY = "total_energy"
 
 bl0906_ns = cg.esphome_ns.namespace("bl0906")
 BL0906 = bl0906_ns.class_("BL0906", cg.PollingComponent, uart.UARTDevice)
+ResetEnergyAction = bl0906_ns.class_("ResetEnergyAction", automation.Action)
 
 CONFIG_SCHEMA = (
     cv.Schema(
@@ -105,6 +108,18 @@ CONFIG_SCHEMA = (
     .extend(cv.polling_component_schema("60s"))
 )
 
+@automation.register_action(
+    "bl0906.reset_energy",
+    ResetEnergyAction,
+    maybe_simple_id(
+        {
+            cv.Required(CONF_ID): cv.use_id(BL0906),
+        }
+    ),
+)
+async def reset_energy_to_code(config, action_id, template_arg, args):
+    paren = await cg.get_variable(config[CONF_ID])
+    return cg.new_Pvariable(action_id, template_arg, paren)
 
 async def to_code(config):
     var = cg.new_Pvariable(config[CONF_ID])
