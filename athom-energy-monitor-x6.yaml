@@ -1,11 +1,11 @@
 substitutions:
-  name: "athom-energy-monitor-x6"
-  friendly_name: "Athom Energy Monitor"
+  name: "athom-em-6"
+  friendly_name: "Athom Energy Meter"
   # Allows ESP device to be automatically lined to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc
   room: ""
-  device_description: "athom bl0906 energy monitor (6 channels)"
-  project_name: "Athom Technology.Athom Energy Monitor(6 Channels)"
-  project_version: "2.0.2"
+  device_description: "athom bl0906 energy meter (6 channels)"
+  project_name: "Athom Technology.Athom Energy Meter(6 Channels)"
+  project_version: "2.0.3"
   update_interval: 5s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ""
@@ -54,7 +54,7 @@ esphome:
   friendly_name: "${friendly_name}"
   area: "${room}"
   name_add_mac_suffix: true
-  min_version: 2024.6.0
+  min_version: 2024.7.0
   project:
     name: "${project_name}"
     version: "${project_version}"
@@ -236,6 +236,7 @@ sensor:
     device_class: ""
 
   - platform: bl0906
+    id: id_bl0906
     update_interval: "${update_interval}"
     frequency:
       name: 'Frequency'
@@ -488,6 +489,34 @@ button:
     name: "Safe Mode"
     internal: false
     entity_category: config
+
+  - platform: template
+    name: Reset Energy
+    entity_category: config
+    on_press:
+      then:
+        - globals.set:
+            id: id_Energy_1_persist
+            value: '0.0'
+        - globals.set:
+            id: id_Energy_2_persist
+            value: '0.0'
+        - globals.set:
+            id: id_Energy_3_persist
+            value: '0.0'
+        - globals.set:
+            id: id_Energy_4_persist
+            value: '0.0'
+        - globals.set:
+            id: id_Energy_5_persist
+            value: '0.0'
+        - globals.set:
+            id: id_Energy_6_persist
+            value: '0.0'
+        - globals.set:
+            id: id_Energy_sum_persist
+            value: '0.0'
+        - bl0906.reset_energy: id_bl0906
 
 text_sensor:
   - platform: wifi_info
