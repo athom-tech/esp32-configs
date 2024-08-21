@@ -30,7 +30,7 @@ from esphome.const import (
 )
 
 DEPENDENCIES = ["uart"]
-
+AUTO_LOAD = ["bl0906"]
 CONF_TOTAL_ENERGY = "total_energy"
 
 bl0906_ns = cg.esphome_ns.namespace("bl0906")
