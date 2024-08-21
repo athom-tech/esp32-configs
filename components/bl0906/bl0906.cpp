@@ -76,6 +76,19 @@ static const uint8_t BL0906_WATTGN_4 = 0xBA;
 static const uint8_t BL0906_WATTGN_5 = 0xBD;
 static const uint8_t BL0906_WATTGN_6 = 0xBE;  // Channel_6
 
+// User write protection setting register,
+// You must first write 0x5555 to the write protection setting register before writing to other registers.
+static const uint8_t BL0906_USR_WRPROT = 0x9E;
+
+// Reset Register
+static const uint8_t BL0906_SOFT_RESET = 0x9F;
+
+const uint8_t BL0906_INIT[2][6] = {
+    // Reset to default
+    {BL0906_WRITE_COMMAND, BL0906_SOFT_RESET, 0x5A, 0x5A, 0x5A, 0x52},
+    // Enable User Operation Write
+    {BL0906_WRITE_COMMAND, BL0906_USR_WRPROT, 0x55, 0x55, 0x00, 0xB7}};
+
 void BL0906::loop() {
   if (this->current_channel_ == UINT8_MAX) {
     return;
@@ -126,6 +139,7 @@ void BL0906::loop() {
     return;
   }
   this->current_channel_++;
+  handleActionCallback();
 }
 
 void BL0906::setup() {
@@ -161,6 +175,44 @@ void BL0906::update() { this->current_channel_ = 0; }
 // The SUM byte is (Addr+Data_L+Data_M+Data_H)&0xFF negated;
 uint8_t bl0906_checksum(const uint8_t address, const DataPacket *data) {
   return (address + data->l + data->m + data->h) ^ 0xFF;
+}
+
+int BL0906::addActionCallBack(ActionCallbackFuncPtr ptrFunc) {
+  m_vecActionCallback.push_back(ptrFunc);
+  return m_vecActionCallback.size();
+}
+
+void BL0906::handleActionCallback() {
+  if (m_vecActionCallback.size() == 0) {
+    return;
+  }
+  ActionCallbackFuncPtr ptrFunc = nullptr;
+  for (int i = 0; i < m_vecActionCallback.size(); i++) {
+    ptrFunc = m_vecActionCallback[i];
+    if (ptrFunc) {
+      ESP_LOGI(TAG, "HandleActionCallback[%d]...", i);
+      (this->*ptrFunc)();
+    }
+  }
+
+  while (this->available()) {
+    this->read();
+  }
+
+  m_vecActionCallback.clear();
+  if (m_process_state != PROCESS_DONE) {
+    m_process_state = PROCESS_DONE;
+  }
+}
+
+// Reset energy
+void BL0906::reset_energy() {
+  this->write_array(BL0906_INIT[0], 6);
+  delay(1);
+  this->flush();
+
+  ESP_LOGW(TAG, "RMSOS:%02X%02X%02X%02X%02X%02X", BL0906_INIT[0][0], BL0906_INIT[0][1], BL0906_INIT[0][2],
+           BL0906_INIT[0][3], BL0906_INIT[0][4], BL0906_INIT[0][5]);
 }
 
 // Read data
