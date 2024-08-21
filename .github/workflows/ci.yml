@@ -25,4 +25,4 @@ jobs:
       - name: Build ESPHome firmware to verify configuration
         uses: esphome/build-action@v4.0.1
         with:
-          yaml_file: ${{ matrix.file }}
+          yaml-file: ${{ matrix.file }}
