@@ -39,7 +39,7 @@ from .const import (
     ICON_VOLTAGE,
 )
 
-CODEOWNERS = ["@athom-tech" "@tarontop"]
+CODEOWNERS = ["@athom-tech", "@tarontop"]
 
 DEPENDENCIES = ["uart"]
 AUTO_LOAD = ["bl0906"]
