@@ -4,7 +4,7 @@ substitutions:
   room: ""
   device_description: "athom esp32 8ch relay board"
   project_name: "Athom Technology.ESP32 8CH Relay Board"
-  project_version: "v2.0.2"
+  project_version: "v2.0.3"
   update_interval: 60s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ""
@@ -34,6 +34,7 @@ substitutions:
 esphome:
   name: "${name}"
   friendly_name: "${friendly_name}"
+  comment: "${device_description}"
   area: "${room}"
   name_add_mac_suffix: true
   min_version: 2024.6.0
@@ -47,7 +48,8 @@ esp32:
   board: esp32dev
   flash_size: 4MB
   framework:
-    type: arduino
+    type: esp-idf
+    version: recommended
 
 preferences:
   flash_write_interval: 5min
@@ -89,6 +91,15 @@ esp32_improv:
 
 dashboard_import:
   package_import_url: github://athom-tech/esp32-configs/athom-8ch-relay-board.yaml
+
+# esp32_ble_tracker:
+#   scan_parameters:
+#     interval: 1100ms
+#     window: 1100ms
+#     active: true
+
+# bluetooth_proxy:
+#   active: true
 
 remote_receiver:
   pin: GPIO17
@@ -247,8 +258,9 @@ sensor:
   - platform: uptime
     name: "Uptime Sensor"
     id: uptime_sensor
+    type:
+      timestamp
     entity_category: "diagnostic"
-    internal: true
 
   - platform: wifi_signal # Reports the WiFi signal strength/RSSI in dB
     name: "WiFi Signal dB"
@@ -355,31 +367,6 @@ text_sensor:
     icon: mdi:clock
     entity_category: "diagnostic"
 #    device_class: timestamp
-
-  #  Creates a sensor of the uptime of the device, in formatted days, hours, minutes and seconds
-  - platform: template
-    name: "Uptime"
-    entity_category: "diagnostic"
-    lambda: |-
-      int seconds = (id(uptime_sensor).state);
-      int days = seconds / (24 * 3600);
-      seconds = seconds % (24 * 3600);
-      int hours = seconds / 3600;
-      seconds = seconds % 3600;
-      int minutes = seconds /  60;
-      seconds = seconds % 60;
-      if ( days > 3650 ) {
-        return { "Starting up" };
-      } else if ( days ) {
-        return { (String(days) +"d " + String(hours) +"h " + String(minutes) +"m "+ String(seconds) +"s").c_str() };
-      } else if ( hours ) {
-        return { (String(hours) +"h " + String(minutes) +"m "+ String(seconds) +"s").c_str() };
-      } else if ( minutes ) {
-        return { (String(minutes) +"m "+ String(seconds) +"s").c_str() };
-      } else {
-        return { (String(seconds) +"s").c_str() };
-      }
-    icon: mdi:clock-start
 
 time:
   - platform: sntp
