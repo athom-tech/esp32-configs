@@ -120,6 +120,7 @@ binary_sensor:
       mode: INPUT_PULLUP
       inverted: true
     name: "Power Button"
+    id: power_button
     disabled_by_default: true
     on_multi_click:
       - timing:
