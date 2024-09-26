@@ -10,9 +10,9 @@ substitutions:
   # Project Name
   project_name: "Athom Technology.Smart Plug V3"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v1.0.3"
+  project_version: "v1.0.4"
    # Restore the relay (GPO switch) upon reboot to state:
-  relay_restore_mode: RESTORE_DEFAULT_OFF
+  relay_restore_mode: RESTORE_DEFAULT_ON
   # Set the update interval for sensors
   sensor_update_interval: 10s
   # Current Limit in Amps. AU Plug = 10. IL, BR, EU, UK, US Plug = 16.
@@ -50,6 +50,29 @@ esphome:
     board_build.mcu: esp32c3
     board_build.variant: esp32c3
     board_build.flash_mode: dio
+  on_boot:
+    - priority: 600
+      then:
+        - select.set_index:
+            id: power_mode
+            index: !lambda |-
+                    return id(restore_mode)-1;
+        - lambda: |-
+              switch(id(restore_mode))
+              {
+              case 1:{
+                      id(relay).turn_off();
+                      break;
+                            }
+              case 2:{
+                      id(relay).turn_on();
+                      break;
+                            }
+              default:{
+                      break;
+                            }
+              }
+
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -108,6 +131,25 @@ globals:
     type: float
     restore_value: yes
     initial_value: '0.0'
+
+  - id: restore_mode
+    type: int
+    restore_value: yes
+    initial_value: "2"      # 0 = Always_Off. 1 = Restore_Power_Off. 2 = Always_On.
+
+select:
+  - platform: template
+    name: "Power On State"
+    id: "power_mode"
+    optimistic: true
+    options:
+      - Always Off
+      - Always On
+      - Restore Power Off State
+    on_value:
+      then:
+        - lambda: |-
+            id(restore_mode)=i+1;
 
 binary_sensor:
   - platform: status
