@@ -5,7 +5,7 @@ substitutions:
   room: ""
   device_description: "athom bl0906 energy meter (6 channels)"
   project_name: "Athom Technology.Athom Energy Meter(6 Channels)"
-  project_version: "2.0.3"
+  project_version: "2.0.4"
   update_interval: 5s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ""
@@ -54,7 +54,7 @@ esphome:
   friendly_name: "${friendly_name}"
   area: "${room}"
   name_add_mac_suffix: true
-  min_version: 2024.7.0
+  min_version: 2024.9.2
   project:
     name: "${project_name}"
     version: "${project_version}"
@@ -112,11 +112,6 @@ esp32_improv:
 
 dashboard_import:
   package_import_url: github://athom-tech/esp32-configs/athom-energy-monitor-x6.yaml
-
-external_components:
-  - source: github://athom-tech/esp32-configs@main
-    components: bl0906
-    refresh: 0s
 
 globals:
   - id: id_Energy_sum_persist
