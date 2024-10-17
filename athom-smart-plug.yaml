@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "Athom Technology.Smart Plug V3"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v1.0.4"
+  project_version: "v1.0.5"
    # Restore the relay (GPO switch) upon reboot to state:
   relay_restore_mode: RESTORE_DEFAULT_ON
   # Set the update interval for sensors
@@ -240,6 +240,10 @@ sensor:
 
     apparent_power:
       name: "Apparent Power"
+      filters:
+        - throttle_average: ${sensor_update_interval}
+    reactive_power:
+      name: "Reactive Power"
       filters:
         - throttle_average: ${sensor_update_interval}
     power_factor:
