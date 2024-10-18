@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "Athom Technology.Smart Plug V3"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v1.0.5"
+  project_version: "v1.0.6"
    # Restore the relay (GPO switch) upon reboot to state:
   relay_restore_mode: RESTORE_DEFAULT_ON
   # Set the update interval for sensors
@@ -35,6 +35,10 @@ substitutions:
   hide_energy_sensor: "true"
   # Enable or disable the use of IPv6 networking on the device
   ipv6_enable: "false"
+  # Power plug icon selection. Change to reflect the type/country of powr plug in use, this will update the power plug icon shown next to the switch
+  power_plug_type: "power-socket-us"  # Options: power-socket-au | power-socket-ch | power-socket-de | power-socket-eu | power-socket-fr | power-socket-it | power-socket-jp | power-socket-uk | power-socket-us |
+
+########################## End of Substitutions #########################
 
 esphome:
   name: "${name}"
@@ -99,6 +103,7 @@ mdns:
 
 web_server:
   port: 80
+#  version: 3
 
 network:
   enable_ipv6: ${ipv6_enable}
@@ -142,7 +147,7 @@ select:
     name: "Power On State"
     id: "power_mode"
     optimistic: true
-    icon: "mdi:electric-switch"
+    icon: mdi:electric-switch
     options:
       - Always Off
       - Always On
@@ -155,6 +160,7 @@ select:
 binary_sensor:
   - platform: status
     name: "Status"
+    icon: mdi:check-network-outline
     entity_category: diagnostic    
 
   - platform: gpio
@@ -201,6 +207,7 @@ sensor:
   - platform: cse7766
     current:
       name: "Current"
+      icon: mdi:current-ac
       filters:
         - throttle_average: ${sensor_update_interval}
         - lambda: if (x < 0.060) return 0.0; else return x;   #For the chip will report less than 3w power when no load is connected
@@ -211,12 +218,14 @@ sensor:
 
     voltage:
       name: "Voltage"
+      icon: mdi:sine-wave
       filters:
         - throttle_average: ${sensor_update_interval}
 
     power:
       name: "Power"
       id: power_sensor
+      icon: mdi:power
       filters:
         - throttle_average: ${sensor_update_interval}
         - lambda: if (x < 3.0) return 0.0; else return x;    #For the chip will report less than 3w power when no load is connected
@@ -224,6 +233,7 @@ sensor:
     energy:
       name: "Energy"
       id: energy
+      icon: mdi:lightning-bolt
       unit_of_measurement: kWh
       filters:
         - throttle: ${sensor_update_interval}
@@ -240,14 +250,19 @@ sensor:
 
     apparent_power:
       name: "Apparent Power"
+      icon: mdi:power
       filters:
         - throttle_average: ${sensor_update_interval}
+
     reactive_power:
       name: "Reactive Power"
+      icon: mdi:flash
       filters:
         - throttle_average: ${sensor_update_interval}
+
     power_factor:
       name: "Power Factor"
+      icon: mdi:percent-outline
       filters:
         - throttle_average: ${sensor_update_interval}
 
@@ -257,7 +272,7 @@ sensor:
     unit_of_measurement: kWh
     device_class: "energy"
     state_class: "total_increasing"
-    icon: "mdi:lightning-bolt"
+    icon: mdi:lightning-bolt
     accuracy_decimals: 3
     lambda: |-
       return id(total_energy);
@@ -268,6 +283,7 @@ sensor:
     restore: true
     power_id: power_sensor
     unit_of_measurement: kWh
+    icon: mdi:hours-24
     accuracy_decimals: 3
     filters:
       - multiply: 0.001
@@ -293,11 +309,13 @@ switch:
     pin: GPIO5
     id: relay
     restore_mode: ${relay_restore_mode}
+    icon: mdi:${power_plug_type}
 
 light:
   - platform: status_led
     name: "Status LED"
     id: blue_led
+    icon: mdi:lightbulb-outline
     disabled_by_default: true
     pin:
       inverted: true
@@ -307,12 +325,15 @@ text_sensor:
   - platform: wifi_info
     ip_address:
       name: "IP Address"
+      icon: mdi:ip-network
       entity_category: diagnostic
     ssid:
       name: "Connected SSID"
+      icon: mdi:wifi-strength-2
       entity_category: diagnostic
     mac_address:
       name: "Mac Address"
+      icon: mdi:network-pos
       entity_category: diagnostic
 
   #  Creates a sensor showing when the device was last restarted
