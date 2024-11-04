@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "Athom Technology.Mini Relay V2"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v2.0.2"
+  project_version: "v2.0.3"
    # Restore the relay (GPO switch) upon reboot to state:
   light_restore_mode: RESTORE_DEFAULT_OFF
   # Set the update interval for sensors
