@@ -19,6 +19,7 @@ jobs:
           athom-garage-door.yaml,
           athom-mini-relay-v2.yaml,
           athom-smart-plug.yaml,
-          athom-zigbee-gateway.yaml
+          athom-zigbee-gateway.yaml,
+          athom-presence-sensor-v3.yaml
       # CHANGEME: Set the name of your project here:
       name: Athom ESP32 Device
