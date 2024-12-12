@@ -46,7 +46,7 @@ esp32:
   flash_size: 4MB
   variant: ESP32C3
   framework:
-    type: esp-idf
+    type: arduino
     version: recommended
 
 preferences:
