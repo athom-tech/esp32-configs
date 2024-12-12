@@ -19,6 +19,7 @@ jobs:
           - athom-mini-relay-v2.yaml
           - athom-smart-plug.yaml
           - athom-zigbee-gateway.yaml
+          - athom-presence-sensor-v3.yaml
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4.1.7
