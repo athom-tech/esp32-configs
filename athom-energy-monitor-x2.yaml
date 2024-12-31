@@ -5,10 +5,10 @@ substitutions:
   room: ""
   device_description: "athom bl0906 energy meter (2 channels)"
   project_name: "Athom Technology.Athom Energy Meter(2 Channels)"
-  project_version: "2.0.4"
+  project_version: "2.0.5"
   update_interval: 5s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
-  dns_domain: ""
+  dns_domain: ".local"
   # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
   timezone: ""
   # Set the duration between the sntp service polling ntp.org servers for an update
