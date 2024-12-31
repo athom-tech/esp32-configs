@@ -4,7 +4,7 @@ substitutions:
   room: ""
   device_description: "athom esp32 4ch relay board"
   project_name: "Athom Technology.ESP32 4CH Relay Board"
-  project_version: "v2.0.3"
+  project_version: "v2.0.4"
   update_interval: 60s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
