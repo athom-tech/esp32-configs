@@ -177,6 +177,7 @@ sensor:
     device_class: ""
 
   - platform: cse7766
+    id: athom_cse7766
     current:
       name: "Current"
       filters:
