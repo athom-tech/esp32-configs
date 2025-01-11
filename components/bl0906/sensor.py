@@ -115,6 +115,7 @@ CONFIG_SCHEMA = (
                                 accuracy_decimals=3,
                                 device_class=DEVICE_CLASS_ENERGY,
                                 unit_of_measurement=UNIT_KILOWATT_HOURS,
+                                state_class=STATE_CLASS_TOTAL,
                             ),
                             key=CONF_NAME,
                         ),
