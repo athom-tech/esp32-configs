@@ -2,28 +2,45 @@ name: CI
 
 on:
   pull_request:
+    paths:
+      - '*.yaml'
+      - '.github/workflows/ci.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
   ci:
-    name: Building ${{ matrix.file }}
+    name: Building ${{ matrix.file }} / ${{ matrix.esphome-version }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
+      max-parallel: 3
       matrix:
+        #### Modify below here to match your project ####
         file:
-          - athom-2ch-relay-board.yaml
-          - athom-4ch-relay-board.yaml
-          - athom-8ch-relay-board.yaml
-          - athom-energy-monitor-x2.yaml
-          - athom-energy-monitor-x6.yaml
-          - athom-garage-door.yaml
-          - athom-mini-relay-v2.yaml
-          - athom-smart-plug.yaml
-          - athom-zigbee-gateway.yaml
-          - athom-presence-sensor-v3.yaml
+          - athom-2ch-relay-board
+          - athom-4ch-relay-board
+          - athom-8ch-relay-board
+          - athom-energy-monitor-x2
+          - athom-energy-monitor-x6
+          - athom-garage-door
+          - athom-mini-relay-v2
+          - athom-smart-plug
+          - athom-zigbee-gateway
+          - athom-presence-sensor-v3
+        #### Modify above here to match your project ####
+
+        esphome-version:
+          - stable
+          - beta
+          - dev
     steps:
       - name: Checkout source code
         uses: actions/checkout@v4.1.7
-      - name: Build ESPHome firmware to verify configuration
-        uses: esphome/build-action@v4.0.1
+      - name: ESPHome ${{ matrix.esphome-version }}
+        uses: esphome/build-action@v4.0.3
         with:
-          yaml-file: ${{ matrix.file }}
+          yaml-file: ${{ matrix.file }}.yaml
+          version: ${{ matrix.esphome-version }}

@@ -6,11 +6,11 @@ substitutions:
   # Allows ESP device to be automatically linked to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc
   room: ""
   # Description as appears in ESPHome & top of webserver page
-  device_description: "athom ps01c3 mmwave radar human presence sensor"
+  device_description: "athom esp32-c3 mmwave radar human presence sensor"
   # Project Name
   project_name: "Athom Technology.Athom PS01C3 Presence Sensor"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.0.2"
+  project_version: "v3.0.3"
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
   # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")

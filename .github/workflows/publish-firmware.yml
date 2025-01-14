@@ -1,0 +1,41 @@
+name: Publish Firmware
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build-firmware:
+    name: Build Firmware
+    uses: esphome/workflows/.github/workflows/build.yml@2024.12.0
+    with:
+      #### Modify below here to match your project ####
+      files: |
+          athom-2ch-relay-board.yaml
+          athom-4ch-relay-board.yaml
+          athom-8ch-relay-board.yaml
+          athom-energy-monitor-x2.yaml
+          athom-energy-monitor-x6.yaml
+          athom-garage-door.yaml
+          athom-mini-relay-v2.yaml
+          athom-smart-plug.yaml
+          athom-zigbee-gateway.yaml
+          athom-presence-sensor-v3.yaml
+      esphome-version: 2024.10.3
+      combined-name: Athom-ESP32-Device
+      #### Modify above here to match your project ####
+
+      release-summary: ${{ github.event.release.body }}
+      release-url: ${{ github.event.release.html_url }}
+      release-version: ${{ github.event.release.tag_name }}
+
+  upload-to-release:
+    name: Upload to Release
+    uses: esphome/workflows/.github/workflows/upload-to-gh-release.yml@2024.12.0
+    needs:
+      - build-firmware
+    with:
+      version: ${{ github.event.release.tag_name }}
