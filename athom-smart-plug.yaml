@@ -13,6 +13,8 @@ substitutions:
   project_version: "v1.0.7"
   # Restore the relay (GPO switch) upon reboot to state:
   relay_restore_mode: RESTORE_DEFAULT_ON
+  # Hide the switch in the frontend
+  hide_switch: "false"
   # Set the update interval for sensors
   sensor_update_interval: 10s
   # Current Limit in Amps. AU Plug = 10. IL, BR, EU, UK, US Plug = 16.
@@ -311,6 +313,7 @@ switch:
     id: relay
     restore_mode: ${relay_restore_mode}
     icon: mdi:${power_plug_type}
+    internal: "{$hide_switch}"
 
 light:
   - platform: status_led
