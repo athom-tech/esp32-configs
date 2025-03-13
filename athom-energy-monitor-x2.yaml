@@ -214,7 +214,7 @@ sensor:
       internal: true
     total_power:
       name: 'Total_Power'
-      id: 'Tatal_Power'
+      id: 'Total_Power'
 
   - platform: copy
     name: 'Total_Energy'
