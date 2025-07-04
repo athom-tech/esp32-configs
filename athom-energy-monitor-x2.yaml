@@ -220,6 +220,7 @@ sensor:
     name: 'Total_Energy'
     id: Energy_sum_persist
     source_id: Energy_sum
+    state_class: total_increasing
     filters:
       - lambda: |-
           if(id(id_Energy_sum_lastvalue) == 0.0  )
@@ -242,6 +243,7 @@ sensor:
     name: 'Energy_1'
     id: Energy_1_persist
     source_id: Energy_1
+    state_class: total_increasing
     filters:
       - lambda: |-
           if(id(id_Energy_1_lastvalue) == 0.0  )
@@ -264,6 +266,7 @@ sensor:
     name: 'Energy_2'
     id: Energy_2_persist
     source_id: Energy_2
+    state_class: total_increasing
     filters:
       - lambda: |-
           if(id(id_Energy_2_lastvalue) == 0.0  )

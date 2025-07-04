@@ -320,6 +320,7 @@ sensor:
     name: 'Total_Energy'
     id: Energy_sum_persist
     source_id: Energy_sum
+    state_class: total_increasing
     filters:
       - lambda: |-
           if(id(id_Energy_sum_lastvalue) == 0.0  )
@@ -342,6 +343,7 @@ sensor:
     name: 'Energy_1'
     id: Energy_1_persist
     source_id: Energy_1
+    state_class: total_increasing
     filters:
       - lambda: |-
           if(id(id_Energy_1_lastvalue) == 0.0  )
@@ -364,6 +366,7 @@ sensor:
     name: 'Energy_2'
     id: Energy_2_persist
     source_id: Energy_2
+    state_class: total_increasing
     filters:
       - lambda: |-
           if(id(id_Energy_2_lastvalue) == 0.0  )
@@ -386,6 +389,7 @@ sensor:
     name: 'Energy_3'
     id: Energy_3_persist
     source_id: Energy_3
+    state_class: total_increasing
     filters:
       - lambda: |-
           if(id(id_Energy_3_lastvalue) == 0.0  )
@@ -408,6 +412,7 @@ sensor:
     name: 'Energy_4'
     id: Energy_4_persist
     source_id: Energy_4
+    state_class: total_increasing
     filters:
       - lambda: |-
           if(id(id_Energy_4_lastvalue) == 0.0  )
@@ -430,6 +435,7 @@ sensor:
     name: 'Energy_5'
     id: Energy_5_persist
     source_id: Energy_5
+    state_class: total_increasing
     filters:
       - lambda: |-
           if(id(id_Energy_5_lastvalue) == 0.0  )
@@ -452,6 +458,7 @@ sensor:
     name: 'Energy_6'
     id: Energy_6_persist
     source_id: Energy_6
+    state_class: total_increasing
     filters:
       - lambda: |-
           if(id(id_Energy_6_lastvalue) == 0.0  )
