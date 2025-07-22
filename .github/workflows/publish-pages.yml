@@ -28,25 +28,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v4
 
       - run: mkdir -p output/firmware
 
       - name: Build
-        uses: actions/jekyll-build-pages@v1.0.13
+        uses: actions/jekyll-build-pages@v1
         with:
           source: ./static
           destination: ./output
 
       - name: Fetch firmware files
-        uses: robinraju/release-downloader@v1.11
+        uses: robinraju/release-downloader@v1
         with:
           latest: true
           fileName: '*'
           out-file-path: output/firmware
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3.0.1
+        uses: actions/upload-pages-artifact@v3
         with:
           path: output
           retention-days: 1
@@ -65,8 +65,8 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Setup Pages
-        uses: actions/configure-pages@v5.0.0
+        uses: actions/configure-pages@v5
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4.0.5
+        uses: actions/deploy-pages@v4

@@ -5,6 +5,8 @@ on:
     paths:
       - '*.yaml'
       - '.github/workflows/ci.yml'
+  schedule:
+    - cron: '0 0 * * *'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
@@ -38,9 +40,14 @@ jobs:
           - dev
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4.1.7
+        uses: actions/checkout@v4
       - name: ESPHome ${{ matrix.esphome-version }}
-        uses: esphome/build-action@v4.0.3
+        uses: esphome/build-action@v7
         with:
           yaml-file: ${{ matrix.file }}.yaml
+          version: ${{ matrix.esphome-version }}
+      - name: ESPHome ${{ matrix.esphome-version }} Factory
+        uses: esphome/build-action@v7
+        with:
+          yaml-file: ${{ matrix.file }}.factory.yaml
           version: ${{ matrix.esphome-version }}
