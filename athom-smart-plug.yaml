@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "Athom Technology.Smart Plug V3"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v1.0.7"
+  project_version: "v2.0.0"
   # Restore the relay (GPO switch) upon reboot to state:
   relay_restore_mode: RESTORE_DEFAULT_ON
   # Set the update interval for sensors
@@ -46,7 +46,7 @@ esphome:
   comment: "${device_description}"
   area: "${room}"  
   name_add_mac_suffix: true
-  min_version: 2024.6.0
+  min_version: 2025.7.0
   project:
     name: "${project_name}"
     version: "${project_version}"
@@ -84,6 +84,7 @@ esp32:
   variant: ESP32C3
   framework:
     type: esp-idf
+    version: recommended
 
 preferences:
   flash_write_interval: 5min
@@ -185,8 +186,9 @@ sensor:
   - platform: uptime
     name: "Uptime Sensor"
     id: uptime_sensor
-    entity_category: diagnostic
-    internal: true
+    type:
+      timestamp
+    entity_category: "diagnostic"
 
   - platform: wifi_signal
     name: "WiFi Signal dB"
@@ -343,14 +345,6 @@ text_sensor:
     icon: mdi:clock
     entity_category: diagnostic
 #    device_class: timestamp
-
-  #  Creates a sensor of the uptime of the device, in formatted days, hours, minutes and seconds
-  - platform: uptime
-    name: "Uptime"
-    entity_category: diagnostic
-    format:
-      separator: " "
-    icon: mdi:clock-start
 
 time:
   - platform: sntp

@@ -5,7 +5,7 @@ substitutions:
   room: ""
   device_description: "athom bl0906 energy meter (2 channels)"
   project_name: "Athom Technology.Athom Energy Meter(2 Channels)"
-  project_version: "2.0.5"
+  project_version: "3.0.0"
   update_interval: 5s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
@@ -42,7 +42,7 @@ esphome:
   friendly_name: "${friendly_name}"
   area: "${room}"
   name_add_mac_suffix: true
-  min_version: 2024.9.2
+  min_version: 2025.7.0
   project:
     name: "${project_name}"
     version: "${project_version}"
@@ -52,7 +52,7 @@ esp32:
   flash_size: 4MB
   variant: ESP32C3
   framework:
-    type: arduino
+    type: esp-idf
     version: recommended
 
 preferences:
@@ -156,8 +156,9 @@ sensor:
   - platform: uptime
     name: "Uptime Sensor"
     id: uptime_sensor
-    entity_category: diagnostic
-    internal: true
+    type:
+      timestamp
+    entity_category: "diagnostic"
 
   - platform: wifi_signal
     name: "WiFi Signal dB"
@@ -337,31 +338,6 @@ text_sensor:
     icon: mdi:clock
     entity_category: diagnostic
     device_class: timestamp
-
-  - platform: template
-    name: "Uptime"
-    id: uptimes
-    icon: mdi:clock-start
-    entity_category: diagnostic
-    lambda: |-
-      int seconds = (id(uptime_sensor).state);
-      int days = seconds / (24 * 3600);
-      seconds = seconds % (24 * 3600);
-      int hours = seconds / 3600;
-      seconds = seconds % 3600;
-      int minutes = seconds /  60;
-      seconds = seconds % 60;
-      if ( days > 3650 ) {
-        return { "Starting up" };
-      } else if ( days ) {
-        return { (String(days) +"d " + String(hours) +"h " + String(minutes) +"m "+ String(seconds) +"s").c_str() };
-      } else if ( hours ) {
-        return { (String(hours) +"h " + String(minutes) +"m "+ String(seconds) +"s").c_str() };
-      } else if ( minutes ) {
-        return { (String(minutes) +"m "+ String(seconds) +"s").c_str() };
-      } else {
-        return { (String(seconds) +"s").c_str() };
-      }
 
 time:
   - platform: sntp
