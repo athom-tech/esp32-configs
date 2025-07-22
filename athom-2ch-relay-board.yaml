@@ -4,7 +4,7 @@ substitutions:
   room: ""
   device_description: "athom esp32 2ch relay board"
   project_name: "Athom Technology.ESP32 2CH Relay Board"
-  project_version: "v2.0.4"
+  project_version: "v2.0.5"
   update_interval: 60s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
@@ -31,7 +31,7 @@ esphome:
   comment: "${device_description}"
   area: "${room}"
   name_add_mac_suffix: true
-  min_version: 2024.6.0
+  min_version: 2025.7.0
   project:
     name: "${project_name}"
     version: "${project_version}"
@@ -98,6 +98,7 @@ dashboard_import:
 remote_receiver:
   pin: GPIO17
   dump: rc_switch
+  id: "rc_switch_receiver"
 
 binary_sensor:
   - platform: status
