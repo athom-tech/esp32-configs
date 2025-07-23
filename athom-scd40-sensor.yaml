@@ -1,0 +1,275 @@
+substitutions:
+  name: "athom-co2-sensor"
+  friendly_name: "Athom C02 Sensor"
+  # Allows ESP device to be automatically lined to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc
+  room: ""
+  device_description: "athom scd40 CO₂ sensor"
+  project_name: "China Athom Technology.CO₂ Sensor"
+  project_version: "1.0.5"
+  update_interval: 5s
+  # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
+  dns_domain: ".local"
+  # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
+  timezone: ""
+  # Set the duration between the sntp service polling ntp.org servers for an update
+  sntp_update_interval: 6h
+  # Network time servers for your region, enter from lowest to highest priority. To use local servers update as per zones or countries at: https://www.ntppool.org/zone/@
+  sntp_server_1: "0.pool.ntp.org"
+  sntp_server_2: "1.pool.ntp.org"
+  sntp_server_3: "2.pool.ntp.org"  
+  # Enables faster network connections, with last connected SSID being connected to and no full scan for SSID being undertaken
+  wifi_fast_connect: "false"
+  # Define logging level: NONE, ERROR, WARN, INFO, DEBUG (Default), VERBOSE, VERY_VERBOSE
+  log_level: "DEBUG"
+  # Enable or disable the use of IPv6 networking on the device
+  ipv6_enable: "false"
+
+#############################ESP32C3###########################
+  sht40_sda_pin: GPIO10
+  sht40_scl_pin: GPIO8
+  button_pin:    GPIO9
+  led_pin:       GPIO21
+#############################ESP32C3###########################
+
+esphome:
+  name: "${name}"
+  friendly_name: "${friendly_name}"
+  area: "${room}"
+  name_add_mac_suffix: true
+  min_version: 2025.7.0
+  project:
+    name: "${project_name}"
+    version: "${project_version}"
+  platformio_options:
+    board_build.flash_mode: dio
+
+esp32:
+  board: esp32-c3-devkitm-1
+  flash_size: 4MB
+  framework:
+    type: esp-idf
+    version: recommended
+
+api:
+  # reboot_timeout: 0s
+
+ota:
+  - platform: esphome
+
+logger:
+  baud_rate: 115200
+  level: ${log_level}
+
+mdns:
+  disabled: false
+
+web_server:
+  port: 80
+
+network:
+  enable_ipv6: ${ipv6_enable}
+
+wifi:
+  ap: {}
+  fast_connect: "${wifi_fast_connect}"
+  domain: "${dns_domain}"
+
+captive_portal:
+
+improv_serial:
+
+esp32_improv:
+  authorizer: none
+
+esp32_ble_tracker:
+  scan_parameters:
+    interval: 1100ms
+    window: 1100ms
+    active: true
+
+bluetooth_proxy:
+  active: true
+
+dashboard_import:
+  package_import_url: github://athom-tech/esp32-configs/athom-scd40-sensor.yaml
+
+i2c:
+  sda: "$sht40_sda_pin"
+  scl: "$sht40_scl_pin"
+  scan: true
+  id: bus_a
+
+# Example configuration entry
+sensor:
+  - platform: scd4x
+    update_interval: ${update_interval}
+    co2:
+      name: "CO2"
+      id: "co2"
+      on_value:
+        then:
+          - script.execute: update_aqi
+
+  - platform: uptime
+    name: "Uptime Sensor"
+    id: uptime_sensor
+    type:
+      timestamp
+    entity_category: "diagnostic"
+
+  - platform: wifi_signal
+    name: "WiFi Signal dB"
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: "diagnostic"
+
+  - platform: copy
+    source_id: wifi_signal_db
+    name: "WiFi Signal Percent"
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "Signal %"
+    entity_category: "diagnostic"
+    device_class: ""
+
+binary_sensor:
+  - platform: status
+    name: "Status"
+    entity_category: diagnostic
+
+  - platform: gpio
+    pin:
+      number: "$button_pin"
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Power Button"
+    disabled_by_default: true
+    on_multi_click:
+      - timing:
+        - ON for at least 4s
+        then:
+          - button.press: Reset
+button:
+  - platform: restart
+    name: "Restart"
+    entity_category: config
+
+  - platform: factory_reset
+    name: "Factory Reset"
+    id: Reset
+    entity_category: config
+
+  - platform: safe_mode
+    name: "Safe Mode"
+    internal: false
+    entity_category: config
+
+light:
+  - platform: esp32_rmt_led_strip
+    rgb_order: GRB
+    pin: "$led_pin"
+    num_leds: 1
+    chipset: ws2812
+    restore_mode: RESTORE_DEFAULT_OFF
+    name: "Light"
+    id: "led"
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      id: ip_address
+      entity_category: diagnostic
+    ssid:
+      name: "Connected SSID"
+      id: ssid
+      entity_category: diagnostic
+    mac_address:
+      name: "Mac Address"
+      id: mac_address
+      entity_category: diagnostic
+
+  - platform: template
+    name: "Last Restart"
+    id: device_last_restart
+    icon: mdi:clock
+    entity_category: diagnostic
+    device_class: timestamp
+
+  - platform: template
+    name: "Air Quality Index"
+    id: aqi
+    icon: mdi:air-filter
+
+time:
+  - platform: sntp
+    id: sntp_time
+  # Define the timezone of the device
+    timezone: "${timezone}"
+  # Change sync interval from default 5min to 6 hours (or as set in substitutions)
+    update_interval: ${sntp_update_interval}
+  # Set specific sntp servers to use
+    servers:
+      - "${sntp_server_1}"
+      - "${sntp_server_2}"
+      - "${sntp_server_3}"
+  # Publish the time the device was last restarted
+    on_time_sync:
+      then:
+        # Update last restart time, but only once.
+        - if:
+            condition:
+              lambda: 'return id(device_last_restart).state == "";'
+            then:
+              - text_sensor.template.publish:
+                  id: device_last_restart
+                  state: !lambda 'return id(sntp_time).now().strftime("%a %d %b %Y - %I:%M:%S %p");'
+
+script:
+  - id: update_aqi
+    mode: restart
+    then:
+      - if:
+          condition:
+            or:
+              - sensor.in_range:
+                  id: co2
+                  above: 1500
+          then:
+            - text_sensor.template.publish:
+                id: aqi
+                state: Bad
+            - light.turn_on:
+                id: led
+                brightness: 100%
+                red: 100%
+                green: 0%
+                blue: 0%
+          else:
+            - if:
+                condition:
+                  or:
+                    - sensor.in_range:
+                        id: co2
+                        above: 800
+                        below: 1500
+                then:
+                  - text_sensor.template.publish:
+                      id: aqi
+                      state: Acceptable
+                  - light.turn_on:
+                      id: led
+                      brightness: 50%
+                      red: 100%
+                      green: 100%
+                      blue: 0%
+                else:
+                  - text_sensor.template.publish:
+                      id: aqi
+                      state: Good
+                  - light.turn_on:
+                      id: led
+                      brightness: 50%
+                      red: 0%
+                      green: 100%
+                      blue: 0%

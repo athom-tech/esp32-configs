@@ -24,6 +24,9 @@ jobs:
           athom-smart-plug.yaml
           athom-zigbee-gateway.yaml
           athom-presence-sensor-v3.yaml
+          athom-scd40-sensor.yaml
+          athom-sht40-sensor.yaml
+          athom-ld2450-sensor.yaml
       esphome-version: 2025.7.0
       combined-name: Athom-ESP32-Device
       #### Modify above here to match your project ####
