@@ -5,7 +5,7 @@ substitutions:
   room: ""
   device_description: "athom sht40 temperature and humidity sensor"
   project_name: "China Athom Technology.Temperature Humidity Sensor"
-  project_version: "1.0.5"
+  project_version: "1.0.6"
   update_interval: 5s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
@@ -36,6 +36,7 @@ substitutions:
 esphome:
   name: "${name}"
   friendly_name: "${friendly_name}"
+  comment: "${device_description}"
   area: "${room}"
   name_add_mac_suffix: true
   min_version: 2025.7.0
@@ -105,8 +106,8 @@ esp32_improv:
 
 esp32_ble_tracker:
   scan_parameters:
-    interval: 1100ms
-    window: 1100ms
+    interval: 320ms
+    window: 320ms
     active: true
 
 bluetooth_proxy:

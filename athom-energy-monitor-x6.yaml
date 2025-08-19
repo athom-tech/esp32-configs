@@ -5,7 +5,7 @@ substitutions:
   room: ""
   device_description: "athom bl0906 energy meter (6 channels)"
   project_name: "Athom Technology.Athom Energy Meter(6 Channels)"
-  project_version: "3.0.0"
+  project_version: "3.0.1"
   update_interval: 5s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
@@ -52,6 +52,7 @@ substitutions:
 esphome:
   name: "${name}"
   friendly_name: "${friendly_name}"
+  comment: "${device_description}"
   area: "${room}"
   name_add_mac_suffix: true
   min_version: 2025.7.0

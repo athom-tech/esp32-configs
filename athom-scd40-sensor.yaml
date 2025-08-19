@@ -5,7 +5,7 @@ substitutions:
   room: ""
   device_description: "athom scd40 CO₂ sensor"
   project_name: "China Athom Technology.CO₂ Sensor"
-  project_version: "1.0.5"
+  project_version: "1.0.6"
   update_interval: 5s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
@@ -34,6 +34,7 @@ substitutions:
 esphome:
   name: "${name}"
   friendly_name: "${friendly_name}"
+  comment: "${device_description}"
   area: "${room}"
   name_add_mac_suffix: true
   min_version: 2025.7.0
@@ -42,6 +43,16 @@ esphome:
     version: "${project_version}"
   platformio_options:
     board_build.flash_mode: dio
+  on_boot:
+    priority: 800
+    then:
+      - if:
+          condition:
+            wifi.connected:
+          then:
+            - light.turn_off: led
+          else:
+            - script.execute: wifi_rgb_loop
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -83,8 +94,8 @@ esp32_improv:
 
 esp32_ble_tracker:
   scan_parameters:
-    interval: 1100ms
-    window: 1100ms
+    interval: 320ms
+    window: 320ms
     active: true
 
 bluetooth_proxy:
@@ -107,8 +118,19 @@ sensor:
       name: "CO2"
       id: "co2"
       on_value:
-        then:
-          - script.execute: update_aqi
+        if:
+          condition:
+            switch.is_on: status_light
+          then:
+            - script.execute: update_aqi
+    temperature:
+      name: "Temperature"
+      id: "temperature"
+      disabled_by_default: true
+    humidity:
+      name: "Humidity"
+      id: "humidity"
+      disabled_by_default: true
 
   - platform: uptime
     name: "Uptime Sensor"
@@ -174,6 +196,18 @@ light:
     name: "Light"
     id: "led"
 
+switch:
+  - platform: template
+    name: "Status Light"
+    id: status_light
+    entity_category: config
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - light.turn_on: led
+    on_turn_off:
+      - light.turn_off: led
+
 text_sensor:
   - platform: wifi_info
     ip_address:
@@ -226,6 +260,42 @@ time:
                   state: !lambda 'return id(sntp_time).now().strftime("%a %d %b %Y - %I:%M:%S %p");'
 
 script:
+  - id: wifi_rgb_loop
+    mode: restart
+    then:
+      - logger.log: "Wi-Fi disconnected. RGB loop started"
+      - while:
+          condition:
+            not:
+              wifi.connected:
+          then:
+            - light.turn_on:
+                id: led
+                red: 100%
+                green: 0%
+                blue: 0%
+                brightness: 100%
+            - delay: 1s
+
+            - light.turn_on:
+                id: led
+                red: 0%
+                green: 100%
+                blue: 0%
+                brightness: 100%
+            - delay: 1s
+
+            - light.turn_on:
+                id: led
+                red: 0%
+                green: 0%
+                blue: 100%
+                brightness: 100%
+            - delay: 1s
+
+            - light.turn_off: led
+            - delay: 100ms
+
   - id: update_aqi
     mode: restart
     then:
