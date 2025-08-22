@@ -4,7 +4,7 @@ substitutions:
   room: ""
   device_description: "athom esp32c3 ld2450 motion target tracking sensor"
   project_name: "Athom Technology.PS02C3MZ LD2450"
-  project_version: "v2.0.1"
+  project_version: "v2.0.2"
   update_interval: 60s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ""
