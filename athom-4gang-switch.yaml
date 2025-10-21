@@ -1,0 +1,349 @@
+substitutions:
+  # Default name
+  name: "athom-4gang-switch"
+  # Default friendly name   
+  friendly_name: "4Gang Switch"
+  # Allows ESP device to be automatically linked to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc  
+  room: ""
+  # Description as appears in ESPHome & top of webserver page
+  device_description: "athom esp32-c3 4gang switch"
+  # Project Name
+  project_name: "China Athom Technology.4Gang Switch"
+  # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
+  project_version: "v3.0.0"
+  # Restore the relay (GPO switch) upon reboot to state:
+  light1_restore_mode: RESTORE_DEFAULT_OFF
+  light2_restore_mode: RESTORE_DEFAULT_OFF
+  light3_restore_mode: RESTORE_DEFAULT_OFF
+  light4_restore_mode: RESTORE_DEFAULT_OFF
+  # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
+  dns_domain: ".local"
+  # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
+  timezone: ""
+  # Set the duration between the sntp service polling ntp.org servers for an update
+  sntp_update_interval: 6h
+  # Network time servers for your region, enter from lowest to highest priority. To use local servers update as per zones or countries at: https://www.ntppool.org/zone/@
+  sntp_server_1: "0.pool.ntp.org"
+  sntp_server_2: "1.pool.ntp.org"
+  sntp_server_3: "2.pool.ntp.org"  
+  # Enables faster network connections, with last connected SSID being connected to and no full scan for SSID being undertaken
+  wifi_fast_connect: "false"
+  # Define logging level: NONE, ERROR, WARN, INFO, DEBUG (Default), VERBOSE, VERY_VERBOSE
+  log_level: "DEBUG"
+  # Enable or disable the use of IPv6 networking on the device
+  ipv6_enable: "false"
+########################## End of Substitutions #########################
+
+esphome:
+  name: "${name}"
+  friendly_name: "${friendly_name}"
+  comment: "${device_description}"
+  area: "${room}"  
+  name_add_mac_suffix: true
+  min_version: 2025.7.0
+  project:
+    name: "${project_name}"
+    version: "${project_version}"
+  platformio_options:
+    board_build.mcu: esp32c3
+    board_build.variant: esp32c3
+    board_build.flash_mode: dio
+  on_boot:
+    - priority: 600
+      then:
+        - select.set_index:
+            id: power_mode
+            index: !lambda |-
+                    return id(restore_mode)-1;
+        - lambda: |-
+              switch(id(restore_mode))
+              {
+              case 1:{
+                      id(light1).turn_off();
+                      id(light2).turn_off();
+                      id(light3).turn_off();
+                      id(light4).turn_off();
+                      break;
+                            }
+              case 2:{
+                      id(light1).turn_on();
+                      id(light2).turn_on();
+                      id(light3).turn_on();
+                      id(light4).turn_on();
+                      break;
+                            }
+              default:{
+                      break;
+                            }
+              }
+
+
+esp32:
+  board: esp32-c3-devkitm-1
+  flash_size: 4MB
+  variant: ESP32C3
+  framework:
+    type: esp-idf
+    version: recommended
+
+preferences:
+  flash_write_interval: 5min
+
+api:
+
+ota:
+  - platform: esphome
+
+logger:
+  level: ${log_level}
+  baud_rate: 115200
+
+mdns:
+  disabled: false
+
+web_server:
+  port: 80
+#  version: 3
+
+network:
+  enable_ipv6: ${ipv6_enable}
+
+wifi:
+  # This spawns an AP with the device name and mac address with no password.
+  ap: {}
+  # Allow rapid re-connection to previously connect WiFi SSID, skipping scan of all SSID
+  fast_connect: "${wifi_fast_connect}"
+  # Define dns domain / suffix to add to hostname
+  domain: "${dns_domain}"
+
+captive_portal:
+
+esp32_improv:
+  authorizer: none
+
+dashboard_import:
+  package_import_url: github://athom-tech/esp32-configs/athom-4gang-switch.yaml
+
+globals:
+  - id: restore_mode
+    type: int
+    restore_value: yes
+    initial_value: "3"
+
+select:
+  - platform: template
+    name: "Power On State"
+    id: "power_mode"
+    optimistic: true
+    options:
+      - Always Off
+      - Always On
+      - Restore Power Off State
+    on_value:
+      then:
+        - lambda: |-
+            id(restore_mode)=i+1;
+
+binary_sensor:
+  - platform: status
+    name: "Status"
+    icon: mdi:check-network-outline
+    entity_category: diagnostic    
+
+  #Button1
+  - platform: gpio
+    pin:
+      inverted: true
+      number: GPIO4
+      mode:
+        input: true
+        pullup: true
+    name: "Button1"
+    id: button1
+    disabled_by_default: true
+    on_multi_click:
+      - timing:
+          - ON for at most 0.5s
+          - OFF for at least 0.2s
+        then:
+          - light.toggle: light1
+      - timing:
+          - ON for at least 4s
+        then:
+          - button.press: Reset
+  #Button2
+  - platform: gpio
+    pin:
+      inverted: true
+      number: GPIO20
+      mode:
+        input: true
+        pullup: true
+    name: "Button2"
+    id: button2
+    disabled_by_default: true
+    on_click:
+      max_length: 0.5s
+      then:
+        - light.toggle: light2
+  #Button3
+  - platform: gpio
+    pin:
+      inverted: true
+      number: GPIO19
+      mode:
+        input: true
+        pullup: true
+    name: "Button3"
+    id: button3
+    disabled_by_default: true
+    on_click:
+      max_length: 0.5s
+      then:
+        - light.toggle: light3
+  #Button4
+  - platform: gpio
+    pin:
+      inverted: true
+      number: GPIO2
+      mode:
+        input: true
+        pullup: true
+    name: "Button4"
+    id: button4
+    disabled_by_default: true
+    on_click:
+      max_length: 0.5s
+      then:
+        - light.toggle: light4
+
+sensor:
+  - platform: uptime
+    name: "Uptime Sensor"
+    id: uptime_sensor
+    type:
+      timestamp
+    entity_category: "diagnostic"
+
+  - platform: wifi_signal
+    name: "WiFi Signal dB"
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: "diagnostic"
+
+  - platform: copy
+    source_id: wifi_signal_db
+    name: "WiFi Signal Percent"
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "Signal %"
+    entity_category: "diagnostic"
+    device_class: ""
+
+button:
+  - platform: restart
+    name: "Restart"
+    entity_category: config
+
+  - platform: factory_reset
+    name: "Factory Reset"
+    id: Reset
+    entity_category: config
+
+  - platform: safe_mode
+    name: "Safe Mode"
+    internal: false
+    entity_category: config
+
+output:
+  # Relay
+  - platform: gpio
+    pin: GPIO5
+    id: relay1
+  - platform: gpio
+    pin: GPIO18
+    id: relay2
+  - platform: gpio
+    pin: GPIO8
+    id: relay3
+  - platform: gpio
+    pin: GPIO3
+    id: relay4
+
+light:
+  - platform: status_led
+    name: "Status LED"
+    id: red_led
+    icon: mdi:lightbulb-outline
+    disabled_by_default: true
+    pin:
+      inverted: true
+      number: GPIO9
+  # Relay
+  - platform: binary
+    name: "Light1"
+    id: light1
+    output: relay1
+    restore_mode: ${light1_restore_mode}
+  - platform: binary
+    name: "Light2"
+    id: light2
+    output: relay2
+    restore_mode: ${light2_restore_mode}
+  - platform: binary
+    name: "Light3"
+    id: light3
+    output: relay3
+    restore_mode: ${light3_restore_mode}
+  - platform: binary
+    name: "Light4"
+    id: light4
+    output: relay4
+    restore_mode: ${light4_restore_mode}
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      icon: mdi:ip-network
+      entity_category: diagnostic
+    ssid:
+      name: "Connected SSID"
+      icon: mdi:wifi-strength-2
+      entity_category: diagnostic
+    mac_address:
+      name: "Mac Address"
+      icon: mdi:network-pos
+      entity_category: diagnostic
+
+  #  Creates a sensor showing when the device was last restarted
+  - platform: template
+    name: 'Last Restart'
+    id: device_last_restart
+    icon: mdi:clock
+    entity_category: diagnostic
+#    device_class: timestamp
+
+time:
+  - platform: sntp
+    id: sntp_time
+  # Define the timezone of the device
+    timezone: "${timezone}"
+  # Change sync interval from default 5min to 6 hours (or as set in substitutions)
+    update_interval: ${sntp_update_interval}
+  # Set specific sntp servers to use
+    servers: 
+      - "${sntp_server_1}"
+      - "${sntp_server_2}"
+      - "${sntp_server_3}"    
+  # Publish the time the device was last restarted
+    on_time_sync:
+      then:
+        # Update last restart time, but only once.
+        - if:
+            condition:
+              lambda: 'return id(device_last_restart).state == "";'
+            then:
+              - text_sensor.template.publish:
+                  id: device_last_restart
+                  state: !lambda 'return id(sntp_time).now().strftime("%a %d %b %Y - %I:%M:%S %p");'
