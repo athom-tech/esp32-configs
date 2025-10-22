@@ -8,9 +8,9 @@ substitutions:
   # Description as appears in ESPHome & top of webserver page
   device_description: "athom eth zigbee gateway"
   # Project Name
-  project_name: "Athom Technology.Athom Zigbee Gateway"
+  project_name: "China Athom Technology.Athom Zigbee Gateway"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v2.0.4"
+  project_version: "v2.0.5"
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
   # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney") 
@@ -35,6 +35,7 @@ esphome:
 
 esp32:
   board: esp32dev
+  flash_size: 4MB
   framework:
     type: esp-idf
     version: recommended
