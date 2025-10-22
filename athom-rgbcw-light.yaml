@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom 12W RGBCW Bulb"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.1.0"
+  project_version: "v3.1.1"
    # Restore the light (GPO switch) upon reboot to state:
   light_restore_mode: RESTORE_DEFAULT_ON
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
@@ -95,6 +95,17 @@ esphome:
                       break;
                       }
               }
+    - priority: -100
+      then:
+        - if:
+            condition:
+              not:
+                wifi.connected:
+            then:
+              - logger.log: "No Wi-Fi connection, starting factory aging test..."
+              - script.execute: factory_test
+            else:
+              - logger.log: "Wi-Fi connected, normal operation mode."
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -108,7 +119,6 @@ preferences:
   flash_write_interval: 1min
 
 api:
-  reboot_timeout: 0s
 
 ota:
   - platform: esphome
@@ -131,6 +141,7 @@ wifi:
   fast_connect: "${wifi_fast_connect}"
   # Define dns domain / suffix to add to hostname
   domain: "${dns_domain}"
+
 
 captive_portal:
 
