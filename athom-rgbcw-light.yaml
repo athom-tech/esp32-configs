@@ -95,17 +95,6 @@ esphome:
                       break;
                       }
               }
-    - priority: -100
-      then:
-        - if:
-            condition:
-              not:
-                wifi.connected:
-            then:
-              - logger.log: "No Wi-Fi connection, starting factory aging test..."
-              - script.execute: factory_test
-            else:
-              - logger.log: "Wi-Fi connected, normal operation mode."
 
 esp32:
   board: esp32-c3-devkitm-1
