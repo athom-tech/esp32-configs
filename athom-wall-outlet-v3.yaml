@@ -1,0 +1,408 @@
+substitutions:
+  # Default name
+  name: "athom-wall-outlet"
+  # Default friendly name   
+  friendly_name: "Athom Wall Outlet"
+  # Allows ESP device to be automatically linked to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc  
+  room: ""
+  # Description as appears in ESPHome & top of webserver page
+  device_description: "athom esp32-c3 power monitoring wall outlet"
+  # Project Name
+  project_name: "China Athom Technology.Athom Wall Outlet V3"
+  # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
+  project_version: "v3.0.0"
+  # Restore the relay (GPO switch) upon reboot to state:
+  relay_restore_mode: RESTORE_DEFAULT_OFF
+  # Set the update interval for sensors
+  sensor_update_interval: 10s
+  # Current Limit in Amps. AU, IL, BR, EU, UK, US Plug = 16.
+  current_limit : "16"
+  # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
+  dns_domain: ".local"
+  # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
+  timezone: ""
+  # Set the duration between the sntp service polling ntp.org servers for an update
+  sntp_update_interval: 6h
+  # Network time servers for your region, enter from lowest to highest priority. To use local servers update as per zones or countries at: https://www.ntppool.org/zone/@
+  sntp_server_1: "0.pool.ntp.org"
+  sntp_server_2: "1.pool.ntp.org"
+  sntp_server_3: "2.pool.ntp.org"  
+  # Enables faster network connections, with last connected SSID being connected to and no full scan for SSID being undertaken
+  wifi_fast_connect: "false"
+  # Define logging level: NONE, ERROR, WARN, INFO, DEBUG (Default), VERBOSE, VERY_VERBOSE
+  log_level: "INFO"
+  # Hide the ENERGY sensor that shows kWh consumed, but with no time period associated with it. Resets when device restarted and reflashed.
+  hide_energy_sensor: "true"
+  # Enable or disable the use of IPv6 networking on the device
+  ipv6_enable: "false"
+  # Power plug icon selection. Change to reflect the type/country of powr plug in use, this will update the power plug icon shown next to the switch
+  power_plug_type: "power-socket-eu"  # Options: power-socket-au | power-socket-ch | power-socket-de | power-socket-eu | power-socket-fr | power-socket-it | power-socket-jp | power-socket-uk | power-socket-us |
+
+########################## End of Substitutions #########################
+
+esphome:
+  name: "${name}"
+  friendly_name: "${friendly_name}"
+  comment: "${device_description}"
+  area: "${room}"  
+  name_add_mac_suffix: true
+  min_version: 2025.7.0
+  project:
+    name: "${project_name}"
+    version: "${project_version}"
+  platformio_options:
+    board_build.mcu: esp32c3
+    board_build.variant: esp32c3
+    board_build.flash_mode: dio
+  on_boot:
+    - priority: 600
+      then:
+        - select.set_index:
+            id: power_mode
+            index: !lambda |-
+                    return id(restore_mode)-1;
+        - lambda: |-
+              switch(id(restore_mode))
+              {
+              case 1:{
+                      id(relay).turn_off();
+                      break;
+                            }
+              case 2:{
+                      id(relay).turn_on();
+                      break;
+                            }
+              default:{
+                      break;
+                            }
+              }
+
+esp32:
+  board: esp32-c3-devkitm-1
+  flash_size: 4MB
+  variant: ESP32C3
+  framework:
+    type: esp-idf
+    version: recommended
+    sdkconfig_options:
+      # @grigi found in testing that these options resulted in better responsiveness.
+      # BLE 4.2 is supported by ALL ESP32 boards that have bluetooth, the original and derivatives.
+      CONFIG_BT_BLE_42_FEATURES_SUPPORTED: y
+      # Also enable this on any derivative boards (S2, C3 etc) but not the original ESP32.
+      CONFIG_BT_BLE_50_FEATURES_SUPPORTED: y
+      # Extend the watchdog timeout, so the device reboots if the device appears locked up for over 10 seconds.
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "10"
+
+preferences:
+  flash_write_interval: 1min
+
+api:
+  # reboot_timeout: 0s
+  # Only enable BLE tracking when wifi is up and api is connected
+  # Gives single-core ESP32-C3 devices time to manage wifi and authenticate with api
+  on_client_connected:
+     - esp32_ble_tracker.start_scan:
+        continuous: true
+  # Disable BLE tracking when there are no api connections live
+  on_client_disconnected:
+    if:
+      condition:
+        not:
+          api.connected:
+      then:
+        - esp32_ble_tracker.stop_scan:
+
+ota:
+  - platform: esphome
+
+logger:
+  baud_rate: 0  # 0 Enables logging, but disables serial-port logging to free CPU and memory
+  level: ${log_level}
+
+mdns:
+  disabled: false
+
+web_server:
+  port: 80
+#  version: 3
+
+network:
+  enable_ipv6: ${ipv6_enable}
+
+wifi:
+  # This spawns an AP with the device name and mac address with no password.
+  ap: {}
+  # Allow rapid re-connection to previously connect WiFi SSID, skipping scan of all SSID
+  fast_connect: "${wifi_fast_connect}"
+  # Define dns domain / suffix to add to hostname
+  domain: "${dns_domain}"
+
+captive_portal:
+
+esp32_improv:
+  authorizer: none
+
+esp32_ble_tracker:
+  scan_parameters:
+    # Don't auto start BLE scanning, we control it in the `api` block's automation.
+    continuous: false
+    active: true  # send scan-request packets to gather more info, like device name for some devices.
+    interval: 320ms  # default 320ms - how long to spend on each advert channel
+    window:   300ms  # default 30ms - how long to actually "listen" in each interval. Reduce this if device is unstable.
+    # If the device cannot keep up or becomes unstable, reduce the "window" setting. This may be
+    # required if your device is controlling other sensors or doing PWM for lights etc.
+
+bluetooth_proxy:
+  active: true
+
+dashboard_import:
+  package_import_url: github://athom-tech/esp32-configs/athom-wall-outlet-v3.yaml
+
+uart:
+  rx_pin: GPIO20
+  baud_rate: 4800
+  data_bits: 8
+  stop_bits: 1
+  parity: EVEN
+
+globals:
+  - id: total_energy
+    type: float
+    restore_value: yes
+    initial_value: '0.0'
+
+  - id: restore_mode
+    type: int
+    restore_value: yes
+    initial_value: "2"      # 0 = Always_Off. 1 = Restore_Power_Off. 2 = Always_On.
+
+select:
+  - platform: template
+    name: "Power On State"
+    id: "power_mode"
+    optimistic: true
+    icon: mdi:electric-switch
+    options:
+      - Always Off
+      - Always On
+      - Restore Power Off State
+    on_value:
+      then:
+        - lambda: |-
+            id(restore_mode)=i+1;
+
+binary_sensor:
+  - platform: status
+    name: "Status"
+    icon: mdi:check-network-outline
+    entity_category: diagnostic    
+
+  - platform: gpio
+    pin:
+      number: GPIO3
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Power Button"
+    id: power_button
+    disabled_by_default: true
+    on_multi_click:
+      - timing:
+          - ON for at most 1s
+          - OFF for at least 0.2s
+        then:
+          - switch.toggle: relay
+      - timing:
+          - ON for at least 4s
+        then:
+          - button.press: Reset
+
+sensor:
+  - platform: uptime
+    name: "Uptime Sensor"
+    id: uptime_sensor
+    type:
+      timestamp
+    entity_category: "diagnostic"
+
+  - platform: wifi_signal
+    name: "WiFi Signal dB"
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: "diagnostic"
+
+  - platform: copy
+    source_id: wifi_signal_db
+    name: "WiFi Signal Percent"
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "Signal %"
+    entity_category: "diagnostic"
+    device_class: ""
+
+  - platform: cse7766
+    id: athom_cse7766
+    current:
+      name: "Current"
+      icon: mdi:current-ac
+      filters:
+        - throttle_average: ${sensor_update_interval}
+        - lambda: if (x < 0.060) return 0.0; else return x;   #For the chip will report less than 3w power when no load is connected
+      on_value_range:
+        - above: ${current_limit}
+          then:
+            - switch.turn_off: relay
+
+    voltage:
+      name: "Voltage"
+      icon: mdi:sine-wave
+      filters:
+        - throttle_average: ${sensor_update_interval}
+
+    power:
+      name: "Power"
+      id: power_sensor
+      icon: mdi:power
+      filters:
+        - throttle_average: ${sensor_update_interval}
+        - lambda: if (x < 3.0) return 0.0; else return x;    #For the chip will report less than 3w power when no load is connected
+
+    energy:
+      name: "Energy"
+      id: energy
+      icon: mdi:lightning-bolt
+      unit_of_measurement: kWh
+      filters:
+        - throttle: ${sensor_update_interval}
+        # Multiplication factor from W to kW is 0.001
+        - multiply: 0.001
+      on_value:
+        then:
+          - lambda: |-
+              static float previous_energy_value = 0.0;
+              float current_energy_value = id(energy).state;
+              id(total_energy) += current_energy_value - previous_energy_value;
+              previous_energy_value = current_energy_value;
+              id(total_energy_sensor).update();
+
+    apparent_power:
+      name: "Apparent Power"
+      icon: mdi:power
+      filters:
+        - throttle_average: ${sensor_update_interval}
+
+    reactive_power:
+      name: "Reactive Power"
+      icon: mdi:flash
+      filters:
+        - throttle_average: ${sensor_update_interval}
+
+    power_factor:
+      name: "Power Factor"
+      icon: mdi:percent-outline
+      filters:
+        - throttle_average: ${sensor_update_interval}
+
+  - platform: template
+    name: "Total Energy"
+    id: total_energy_sensor
+    unit_of_measurement: kWh
+    device_class: "energy"
+    state_class: "total_increasing"
+    icon: mdi:lightning-bolt
+    accuracy_decimals: 3
+    lambda: |-
+      return id(total_energy);
+    update_interval: ${sensor_update_interval}
+
+  - platform: total_daily_energy
+    name: "Total Daily Energy"
+    restore: true
+    power_id: power_sensor
+    unit_of_measurement: kWh
+    icon: mdi:hours-24
+    accuracy_decimals: 3
+    filters:
+      - multiply: 0.001
+
+button:
+  - platform: restart
+    name: "Restart"
+    entity_category: config
+
+  - platform: factory_reset
+    name: "Factory Reset"
+    id: Reset
+    entity_category: config
+
+  - platform: safe_mode
+    name: "Safe Mode"
+    internal: false
+    entity_category: config
+
+switch:
+  - platform: gpio
+    name: "Switch"
+    pin: GPIO5
+    id: relay
+    restore_mode: ${relay_restore_mode}
+    icon: mdi:${power_plug_type}
+    on_turn_on:
+      - light.turn_on: red_led
+    on_turn_off:
+      - light.turn_off: red_led
+
+light:
+  - platform: status_led
+    name: "Status LED"
+    id: red_led
+    disabled_by_default: true
+    pin:
+      inverted: true
+      number: GPIO6
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      icon: mdi:ip-network
+      entity_category: diagnostic
+    ssid:
+      name: "Connected SSID"
+      icon: mdi:wifi-strength-2
+      entity_category: diagnostic
+    mac_address:
+      name: "Mac Address"
+      icon: mdi:network-pos
+      entity_category: diagnostic
+
+  #  Creates a sensor showing when the device was last restarted
+  - platform: template
+    name: 'Last Restart'
+    id: device_last_restart
+    icon: mdi:clock
+    entity_category: diagnostic
+#    device_class: timestamp
+
+time:
+  - platform: sntp
+    id: sntp_time
+  # Define the timezone of the device
+    timezone: "${timezone}"
+  # Change sync interval from default 5min to 6 hours (or as set in substitutions)
+    update_interval: ${sntp_update_interval}
+  # Set specific sntp servers to use
+    servers: 
+      - "${sntp_server_1}"
+      - "${sntp_server_2}"
+      - "${sntp_server_3}"    
+  # Publish the time the device was last restarted
+    on_time_sync:
+      then:
+        # Update last restart time, but only once.
+        - if:
+            condition:
+              lambda: 'return id(device_last_restart).state == "";'
+            then:
+              - text_sensor.template.publish:
+                  id: device_last_restart
+                  state: !lambda 'return id(sntp_time).now().strftime("%a %d %b %Y - %I:%M:%S %p");'
