@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom Wall Outlet V3"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.0.0"
+  project_version: "v3.0.1"
   # Restore the relay (GPO switch) upon reboot to state:
   relay_restore_mode: RESTORE_DEFAULT_OFF
   # Set the update interval for sensors
@@ -94,7 +94,7 @@ esp32:
       CONFIG_ESP_TASK_WDT_TIMEOUT_S: "10"
 
 preferences:
-  flash_write_interval: 1min
+  flash_write_interval: 5min
 
 api:
   # reboot_timeout: 0s
