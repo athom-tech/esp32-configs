@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.3Gang Switch"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.0.0"
+  project_version: "v3.0.1"
   # Restore the relay (GPO switch) upon reboot to state:
   light1_restore_mode: RESTORE_DEFAULT_OFF
   light2_restore_mode: RESTORE_DEFAULT_OFF
@@ -74,7 +74,6 @@ esphome:
                             }
               }
 
-
 esp32:
   board: esp32-c3-devkitm-1
   flash_size: 4MB
@@ -82,18 +81,40 @@ esp32:
   framework:
     type: esp-idf
     version: recommended
+    sdkconfig_options:
+      # @grigi found in testing that these options resulted in better responsiveness.
+      # BLE 4.2 is supported by ALL ESP32 boards that have bluetooth, the original and derivatives.
+      CONFIG_BT_BLE_42_FEATURES_SUPPORTED: y
+      # Also enable this on any derivative boards (S2, C3 etc) but not the original ESP32.
+      CONFIG_BT_BLE_50_FEATURES_SUPPORTED: y
+      # Extend the watchdog timeout, so the device reboots if the device appears locked up for over 10 seconds.
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "10"
 
 preferences:
-  flash_write_interval: 5min
+  flash_write_interval: 1min
 
 api:
+  # reboot_timeout: 0s
+  # Only enable BLE tracking when wifi is up and api is connected
+  # Gives single-core ESP32-C3 devices time to manage wifi and authenticate with api
+  on_client_connected:
+     - esp32_ble_tracker.start_scan:
+        continuous: true
+  # Disable BLE tracking when there are no api connections live
+  on_client_disconnected:
+    if:
+      condition:
+        not:
+          api.connected:
+      then:
+        - esp32_ble_tracker.stop_scan:
 
 ota:
   - platform: esphome
 
 logger:
+  baud_rate: 0  # 0 Enables logging, but disables serial-port logging to free CPU and memory
   level: ${log_level}
-  baud_rate: 115200
 
 mdns:
   disabled: false
@@ -117,6 +138,19 @@ captive_portal:
 
 esp32_improv:
   authorizer: none
+
+esp32_ble_tracker:
+  scan_parameters:
+    # Don't auto start BLE scanning, we control it in the `api` block's automation.
+    continuous: false
+    active: true  # send scan-request packets to gather more info, like device name for some devices.
+    interval: 320ms  # default 320ms - how long to spend on each advert channel
+    window:   300ms  # default 30ms - how long to actually "listen" in each interval. Reduce this if device is unstable.
+    # If the device cannot keep up or becomes unstable, reduce the "window" setting. This may be
+    # required if your device is controlling other sensors or doing PWM for lights etc.
+
+bluetooth_proxy:
+  active: true
 
 dashboard_import:
   package_import_url: github://athom-tech/esp32-configs/athom-3gang-switch.yaml
