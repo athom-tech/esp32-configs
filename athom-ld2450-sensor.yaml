@@ -143,159 +143,99 @@ sensor:
     target_count:
       name: Presence Target Count
       id: target_count
-      filters:
-        - throttle: 1000ms
     still_target_count:
       name: Still Target Count
       id: still_target_count
-      filters:
-        - throttle: 1000ms
     moving_target_count:
       name: Moving Target Count
       id: moving_target_count
-      filters:
-        - throttle: 1000ms
     target_1:
       x:
         name: Target-1 X
         id: target_1_x
-        filters:
-          - throttle: 1000ms
       y:
         name: Target-1 Y
         id: target_1_y
-        filters:
-          - throttle: 1000ms
       speed:
         name: Target-1 Speed
         id: target_1_speed
-        filters:
-          - throttle: 1000ms
       angle:
         name: Target-1 Angle
         id: target_1_angle
-        filters:
-          - throttle: 1000ms
       distance:
         name: Target-1 Distance
         id: target_1_distance
-        filters:
-          - throttle: 1000ms
       resolution:
         name: Target-1 Resolution
         id: target_1_resolution
-        filters:
-          - throttle: 1000ms
     target_2:
       x:
         name: Target-2 X
         id: target_2_x
-        filters:
-          - throttle: 1000ms
       y:
         name: Target-2 Y
         id: target_2_y
-        filters:
-          - throttle: 1000ms
       speed:
         name: Target-2 Speed
         id: target_2_speed
-        filters:
-          - throttle: 1000ms
       angle:
         name: Target-2 Angle
         id: target_2_angle
-        filters:
-          - throttle: 1000ms
       distance:
         name: Target-2 Distance
         id: target_2_distance
-        filters:
-          - throttle: 1000ms
       resolution:
         name: Target-2 Resolution
         id: target_2_resolution
-        filters:
-          - throttle: 1000ms
     target_3:
       x:
         name: Target-3 X
         id: target_3_x
-        filters:
-          - throttle: 1000ms
       y:
         name: Target-3 Y
         id: target_3_y
-        filters:
-          - throttle: 1000ms
       speed:
         name: Target-3 Speed
         id: target_3_speed
-        filters:
-          - throttle: 1000ms
       angle:
         name: Target-3 Angle
         id: target_3_angle
-        filters:
-          - throttle: 1000ms
       distance:
         name: Target-3 Distance
         id: target_3_distance
-        filters:
-          - throttle: 1000ms
       resolution:
         name: Target-3 Resolution
         id: target_3_resolution
-        filters:
-          - throttle: 1000ms
     zone_1:
       target_count:
         name: Zone-1 All Target Count
         id: zone_1_target_count
-        filters:
-          - throttle: 1000ms
       still_target_count:
         name: Zone-1 Still Target Count
         id: zone_1_still_target_count
-        filters:
-          - throttle: 1000ms
       moving_target_count:
         name: Zone-1 Moving Target Count
         id: zone_1_moving_target_count
-        filters:
-          - throttle: 1000ms
     zone_2:
       target_count:
         name: Zone-2 All Target Count
         id: zone_2_target_count
-        filters:
-          - throttle: 1000ms
       still_target_count:
         name: Zone-2 Still Target Count
         id: zone_2_still_target_count
-        filters:
-          - throttle: 1000ms
       moving_target_count:
         name: Zone-2 Moving Target Count
         id: zone_2_moving_target_count
-        filters:
-          - throttle: 1000ms
     zone_3:
       target_count:
         name: Zone-3 All Target Count
         id: zone_3_target_count
-        filters:
-          - throttle: 1000ms
       still_target_count:
         name: Zone-3 Still Target Count
         id: zone_3_still_target_count
-        filters:
-          - throttle: 1000ms
       moving_target_count:
         name: Zone-3 Moving Target Count
         id: zone_3_moving_target_count
-        filters:
-          - throttle: 1000ms
 
   - platform: uptime
     name: "Uptime Sensor"
