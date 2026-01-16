@@ -74,6 +74,13 @@ wifi:
 
 captive_portal:
 
+esp32_ble_tracker:
+  scan_parameters:
+    active: true
+
+bluetooth_proxy:
+  active: true
+
 esp32_improv:
   authorizer: none
 
