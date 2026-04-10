@@ -172,13 +172,13 @@ infrared:
 
   # RF transmitter instance
   - platform: ir_rf_proxy
-    name: IR Proxy Transmitter
+    name: RF Proxy Transmitter
     frequency: 433 MHz
     id: rf_proxy_tx
     remote_transmitter_id: rf_transmitter
   # RF receiver instance
   - platform: ir_rf_proxy
-    name: IR Proxy Receiver
+    name: RF Proxy Receiver
     id: rf_proxy_rx
     remote_receiver_id: rf_receiver
 
