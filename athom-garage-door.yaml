@@ -95,6 +95,9 @@ web_server:
 network:
   enable_ipv6: ${ipv6_enable}
 
+bluetooth_proxy:
+  active: true
+
 wifi:
   ap: {}
   fast_connect: "${wifi_fast_connect}"
