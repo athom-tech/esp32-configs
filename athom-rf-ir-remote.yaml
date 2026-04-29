@@ -36,6 +36,7 @@ substitutions:
   RF_TX_PIN: GPIO18
   IR_RX_PIN: GPIO33
   IR_TX_PIN: GPIO25
+  Button_PIN: GPIO0
   LED_PIN: GPIO27
 #########################GPIO######################
 
@@ -195,7 +196,7 @@ binary_sensor:
 
   - platform: gpio
     pin:
-      number: GPIO36
+      number: ${Button_PIN}
       mode:
         input: true
       inverted: true
