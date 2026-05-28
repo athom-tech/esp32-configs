@@ -137,6 +137,7 @@ i2c:
 # Example configuration entry
 sensor:
   - platform: scd4x
+    id: scd40_sensor
     update_interval: ${update_interval}
     co2:
       name: "CO2"
