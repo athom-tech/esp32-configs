@@ -48,6 +48,8 @@ jobs:
         run: |
           set -euo pipefail
 
+          mkdir -p output/firmware
+
           releases="$(
             gh release list \
               --exclude-drafts \
