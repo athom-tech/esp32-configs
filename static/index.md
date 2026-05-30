@@ -6,7 +6,7 @@ ESPhome project by Shenzhen Athom Technology Co., Ltd., China.
 
 Choose a firmware version and device, then connect it over USB to install the matching pre-built firmware.
 
-<section class="installer" aria-label="Firmware installer">
+<section id="installer" class="installer" aria-label="Firmware installer" aria-disabled="true">
   <div class="controls">
     <label class="field" for="version-select">
       <span>Firmware version</span>
@@ -29,7 +29,7 @@ Choose a firmware version and device, then connect it over USB to install the ma
       <h3 id="selected-title">Select firmware</h3>
       <p id="selected-detail">The installer will use the selected version and device manifest.</p>
     </div>
-    <esp-web-install-button id="install-button" manifest="firmware/Athom-ESP32-Device.manifest.json"></esp-web-install-button>
+    <esp-web-install-button id="install-button" manifest="firmware/Athom-ESP32-Device.manifest.json" disabled></esp-web-install-button>
   </div>
 
   <p id="status" class="status" role="status"></p>
@@ -65,6 +65,13 @@ Choose a firmware version and device, then connect it over USB to install the ma
     background: #fff;
     color: #222;
     font: inherit;
+  }
+
+  .field select:disabled,
+  .field input:disabled {
+    background: #f4f6f8;
+    color: #68727d;
+    cursor: not-allowed;
   }
 
   .device-grid {
@@ -143,6 +150,11 @@ Choose a firmware version and device, then connect it over USB to install the ma
     min-height: 1.4em;
   }
 
+  .installer[aria-disabled="true"] esp-web-install-button {
+    opacity: 0.55;
+    pointer-events: none;
+  }
+
   @media (max-width: 760px) {
     .controls {
       grid-template-columns: 1fr;
@@ -157,38 +169,15 @@ Choose a firmware version and device, then connect it over USB to install the ma
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 <script>
-  const fallbackDeviceIds = [
-    "athom-1gang-switch",
-    "athom-2ch-relay-board",
-    "athom-2gang-switch",
-    "athom-3gang-switch",
-    "athom-4ch-relay-board",
-    "athom-4gang-switch",
-    "athom-8ch-relay-board",
-    "athom-energy-monitor-x2",
-    "athom-energy-monitor-x6",
-    "athom-garage-door",
-    "athom-ld2450-sensor",
-    "athom-mini-relay-v2",
-    "athom-presence-sensor-v3",
-    "athom-rf-ir-remote",
-    "athom-rgbcw-bulb",
-    "athom-rgbcw-light",
-    "athom-scd40-sensor",
-    "athom-sht40-sensor",
-    "athom-smart-plug",
-    "athom-smart-plug-v5",
-    "athom-wall-outlet-v3",
-    "athom-zigbee-gateway"
-  ];
-
   const state = {
     versions: [],
     selectedVersion: "",
     selectedDevice: "",
-    filter: ""
+    filter: "",
+    ready: false
   };
 
+  const installer = document.querySelector("#installer");
   const versionSelect = document.querySelector("#version-select");
   const deviceSelect = document.querySelector("#device-select");
   const search = document.querySelector("#device-search");
@@ -222,19 +211,6 @@ Choose a firmware version and device, then connect it over USB to install the ma
     };
   }
 
-  function fallbackVersions() {
-    return [{
-      version: "latest",
-      tag: "latest",
-      devices: fallbackDeviceIds.map((id) => ({
-        id,
-        name: formatDeviceName(id),
-        yaml: `${id}.yaml`,
-        manifest: `firmware/${id}.manifest.json`
-      }))
-    }];
-  }
-
   async function loadInstallerIndex() {
     try {
       const response = await fetch("firmware/versions.json", { cache: "no-store" });
@@ -243,13 +219,21 @@ Choose a firmware version and device, then connect it over USB to install the ma
       }
 
       const data = await response.json();
-      state.versions = data.versions.map(normalizeVersion);
-      state.selectedVersion = data.latest || state.versions[0]?.version || "";
+      state.versions = (data.versions || []).map(normalizeVersion);
+      if (state.versions.length === 0) {
+        throw new Error("versions.json does not include firmware versions");
+      }
+
+      const latestVersion = state.versions.find((item) => item.version === data.latest);
+      state.selectedVersion = latestVersion?.version || state.versions[0]?.version || "";
+      state.ready = true;
       status.textContent = `Loaded ${state.versions.length} firmware version${state.versions.length === 1 ? "" : "s"}; latest is ${state.selectedVersion}.`;
     } catch (error) {
-      state.versions = fallbackVersions();
-      state.selectedVersion = state.versions[0].version;
-      status.textContent = "Version index is not available yet; using latest firmware paths.";
+      state.versions = [];
+      state.selectedVersion = "";
+      state.selectedDevice = "";
+      state.ready = false;
+      status.textContent = "Firmware version index is not available yet; installation is disabled.";
     }
 
     state.selectedDevice = getCurrentDevices()[0]?.id || "";
@@ -301,6 +285,7 @@ Choose a firmware version and device, then connect it over USB to install the ma
       versionSelect.append(option);
     }
     versionSelect.value = state.selectedVersion;
+    versionSelect.disabled = !state.ready;
   }
 
   function renderDeviceSelect() {
@@ -313,6 +298,7 @@ Choose a firmware version and device, then connect it over USB to install the ma
       deviceSelect.append(option);
     }
     deviceSelect.value = state.selectedDevice;
+    deviceSelect.disabled = !state.ready;
   }
 
   function renderGrid() {
@@ -322,7 +308,7 @@ Choose a firmware version and device, then connect it over USB to install the ma
     if (visibleDevices.length === 0) {
       const empty = document.createElement("p");
       empty.className = "empty";
-      empty.textContent = "No matching devices.";
+      empty.textContent = state.ready ? "No matching devices." : "Firmware index is not available.";
       grid.append(empty);
       return;
     }
@@ -344,16 +330,21 @@ Choose a firmware version and device, then connect it over USB to install the ma
     const version = getCurrentVersion();
     const device = getSelectedDevice();
 
+    installer.setAttribute("aria-disabled", String(!state.ready));
+    search.disabled = !state.ready;
+
     if (!version || !device) {
       title.textContent = "No firmware available";
-      detail.textContent = "";
-      installButton.setAttribute("manifest", "firmware/Athom-ESP32-Device.manifest.json");
+      detail.textContent = "Firmware index is unavailable; installation is disabled.";
+      installButton.removeAttribute("manifest");
+      installButton.setAttribute("disabled", "");
       return;
     }
 
     title.textContent = `${device.name} - ${version.version}`;
     detail.textContent = `${device.yaml} -> ${device.manifest}`;
     installButton.setAttribute("manifest", device.manifest);
+    installButton.removeAttribute("disabled");
   }
 
   function render() {

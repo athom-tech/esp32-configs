@@ -27,6 +27,7 @@ env:
 
 jobs:
   build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     name: Build
     runs-on: ubuntu-latest
     steps:
@@ -57,8 +58,8 @@ jobs:
           )"
 
           if [ "$(jq 'length' <<< "${releases}")" -eq 0 ]; then
-            echo '{"latest": null, "versions": []}' > output/firmware/versions.json
-            exit 0
+            echo "No esphome-* firmware releases are available; refusing to publish an installer without firmware assets." >&2
+            exit 1
           fi
 
           latest_tag="$(jq -r 'map(select(.isLatest == true))[0].tagName // .[0].tagName' <<< "${releases}")"
@@ -74,12 +75,33 @@ jobs:
 
             if [ ! -f "${target}/devices.json" ]; then
               echo "Release ${tag} does not include devices.json." >&2
-              continue
+              exit 1
             fi
 
-            if [ "${tag}" = "${latest_tag}" ]; then
-              cp "${target}/"* output/firmware/
-            fi
+            jq -e '.devices | type == "array" and length > 0' "${target}/devices.json" >/dev/null
+
+            while IFS= read -r manifest; do
+              manifest_file="${target}/${manifest#firmware/}"
+              if [ ! -f "${manifest_file}" ]; then
+                echo "Release ${tag} is missing manifest '${manifest_file}'." >&2
+                exit 1
+              fi
+
+              while IFS= read -r asset_path; do
+                if [ -z "${asset_path}" ]; then
+                  continue
+                fi
+
+                case "${asset_path}" in
+                  http://*|https://*) continue ;;
+                esac
+
+                if [ ! -f "${target}/${asset_path}" ]; then
+                  echo "Manifest '${manifest_file}' references missing asset '${target}/${asset_path}'." >&2
+                  exit 1
+                fi
+              done < <(jq -r '[.builds[]? | (.ota.path? // empty), (.parts[]?.path? // empty)] | .[]' "${manifest_file}")
+            done < <(jq -r '.devices[].manifest' "${target}/devices.json")
 
             jq --arg version "${version}" \
                --arg tag "${tag}" \
@@ -91,6 +113,16 @@ jobs:
                }]' output/firmware/versions.json > output/firmware/versions.tmp
             mv output/firmware/versions.tmp output/firmware/versions.json
           done
+
+          latest_version="${latest_tag#esphome-}"
+          latest_target="output/firmware/${latest_version}"
+          test -d "${latest_target}"
+          find output/firmware -mindepth 1 -maxdepth 1 -type f ! -name versions.json -delete
+          cp "${latest_target}/"* output/firmware/
+
+          test -f output/firmware/devices.json
+          test -f output/firmware/Athom-ESP32-Device.manifest.json
+          jq -e '.latest and (.versions | length > 0)' output/firmware/versions.json >/dev/null
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5

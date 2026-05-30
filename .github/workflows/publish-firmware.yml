@@ -285,25 +285,74 @@ jobs:
                 '{name: $name, version: $version, home_assistant_domain: $homeAssistantDomain, new_install_prompt_erase: false, builds: []}' \
                 > release-assets/Athom-ESP32-Device.manifest.json
 
-          for device_dir in firmware/*; do
-            [ -d "${device_dir}" ] || continue
-            device="$(basename "${device_dir}")"
+          shopt -s nullglob
+          mapfile -t devices < <(jq -r '.[]' <<< "${FILES_JSON}")
+          for device in "${devices[@]}"; do
+            device_dir="firmware/${device}"
+            manifest_path="${device_dir}/manifest.json"
 
-            if [ -f "${device_dir}/manifest.json" ]; then
-              cp "${device_dir}/manifest.json" "release-assets/${device}.manifest.json"
-
-              tmp_manifest="$(mktemp)"
-              jq --slurpfile manifest "${device_dir}/manifest.json" \
-                 '.builds += ($manifest[0].builds // [$manifest[0]])' \
-                 release-assets/Athom-ESP32-Device.manifest.json > "${tmp_manifest}"
-              mv "${tmp_manifest}" release-assets/Athom-ESP32-Device.manifest.json
+            if [ ! -d "${device_dir}" ]; then
+              echo "Expected firmware directory '${device_dir}'." >&2
+              exit 1
             fi
 
-            cp "${device_dir}/"*.bin release-assets/
+            if [ ! -f "${manifest_path}" ]; then
+              echo "Expected manifest '${manifest_path}'." >&2
+              exit 1
+            fi
+
+            bins=("${device_dir}/"*.bin)
+            factory_bins=("${device_dir}/"*.factory.bin)
+            ota_bins=("${device_dir}/"*.ota.bin)
+
+            if [ "${#bins[@]}" -eq 0 ]; then
+              echo "Expected at least one binary in '${device_dir}'." >&2
+              exit 1
+            fi
+
+            if [ "${#factory_bins[@]}" -ne 1 ]; then
+              echo "Expected one factory binary in '${device_dir}', found ${#factory_bins[@]}." >&2
+              exit 1
+            fi
+
+            if [ "${#ota_bins[@]}" -ne 1 ]; then
+              echo "Expected one OTA binary in '${device_dir}', found ${#ota_bins[@]}." >&2
+              exit 1
+            fi
+
+            device_manifest="$(mktemp)"
+            cp "${manifest_path}" "${device_manifest}"
+
+            for binary in "${bins[@]}"; do
+              binary_name="$(basename "${binary}")"
+              asset_name="${device}-${binary_name}"
+
+              if [ -e "release-assets/${asset_name}" ]; then
+                echo "Release asset '${asset_name}' already exists." >&2
+                exit 1
+              fi
+
+              cp "${binary}" "release-assets/${asset_name}"
+
+              tmp_manifest="$(mktemp)"
+              jq --arg from "${binary_name}" \
+                 --arg to "${asset_name}" \
+                 'walk(if type == "object" and has("path") and (.path | split("/")[-1]) == $from then .path = $to else . end)' \
+                 "${device_manifest}" > "${tmp_manifest}"
+              mv "${tmp_manifest}" "${device_manifest}"
+            done
+
+            cp "${device_manifest}" "release-assets/${device}.manifest.json"
+            rm -f "${device_manifest}"
+
+            tmp_manifest="$(mktemp)"
+            jq --slurpfile manifest "release-assets/${device}.manifest.json" \
+               '.builds += ($manifest[0].builds // [$manifest[0]])' \
+               release-assets/Athom-ESP32-Device.manifest.json > "${tmp_manifest}"
+            mv "${tmp_manifest}" release-assets/Athom-ESP32-Device.manifest.json
           done
 
           cd release-assets
-          shopt -s nullglob
           for binary in *.bin; do
             md5sum "${binary}" > "${binary}.md5"
             sha256sum "${binary}" > "${binary}.sha256"
@@ -328,6 +377,23 @@ jobs:
             echo "Expected ${expected_count} OTA binaries, found ${ota_count}." >&2
             exit 1
           fi
+
+          for manifest in *.manifest.json; do
+            while IFS= read -r asset_path; do
+              if [ -z "${asset_path}" ]; then
+                continue
+              fi
+
+              case "${asset_path}" in
+                http://*|https://*) continue ;;
+              esac
+
+              if [ ! -f "${asset_path}" ]; then
+                echo "Manifest '${manifest}' references missing asset '${asset_path}'." >&2
+                exit 1
+              fi
+            done < <(jq -r '[.builds[]? | (.ota.path? // empty), (.parts[]?.path? // empty)] | .[]' "${manifest}")
+          done
 
       - name: Create GitHub release
         env:
