@@ -42,11 +42,55 @@ jobs:
           destination: ./output
 
       - name: Fetch firmware files
-        uses: robinraju/release-downloader@v1
-        with:
-          latest: true
-          fileName: '*'
-          out-file-path: output/firmware
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          releases="$(
+            gh release list \
+              --exclude-drafts \
+              --exclude-pre-releases \
+              --limit 100 \
+              --json tagName,isLatest,publishedAt \
+              --jq '[.[] | select(.tagName | startswith("esphome-"))] | sort_by(.publishedAt) | reverse'
+          )"
+
+          if [ "$(jq 'length' <<< "${releases}")" -eq 0 ]; then
+            echo '{"latest": null, "versions": []}' > output/firmware/versions.json
+            exit 0
+          fi
+
+          latest_tag="$(jq -r 'map(select(.isLatest == true))[0].tagName // .[0].tagName' <<< "${releases}")"
+
+          jq -n --arg latest "${latest_tag#esphome-}" '{latest: $latest, versions: []}' \
+            > output/firmware/versions.json
+
+          jq -r '.[].tagName' <<< "${releases}" | while IFS= read -r tag; do
+            version="${tag#esphome-}"
+            target="output/firmware/${version}"
+            mkdir -p "${target}"
+            gh release download "${tag}" --dir "${target}" --pattern '*'
+
+            if [ ! -f "${target}/devices.json" ]; then
+              echo "Release ${tag} does not include devices.json." >&2
+              continue
+            fi
+
+            if [ "${tag}" = "${latest_tag}" ]; then
+              cp "${target}/"* output/firmware/
+            fi
+
+            jq --arg version "${version}" \
+               --arg tag "${tag}" \
+               --slurpfile devices "${target}/devices.json" \
+               '.versions += [{
+                 version: $version,
+                 tag: $tag,
+                 devices: ($devices[0].devices | map(.manifest = ("firmware/" + $version + "/" + (.manifest | sub("^firmware/"; "")))))
+               }]' output/firmware/versions.json > output/firmware/versions.tmp
+            mv output/firmware/versions.tmp output/firmware/versions.json
+          done
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5

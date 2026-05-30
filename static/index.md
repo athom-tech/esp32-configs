@@ -4,15 +4,19 @@ ESPhome project by Shenzhen Athom Technology Co., Ltd., China.
 
 # Installation
 
-Choose your device, then connect it over USB to install the matching pre-built firmware.
+Choose a firmware version and device, then connect it over USB to install the matching pre-built firmware.
 
-<section class="installer-panel" aria-label="Firmware installer">
-  <div class="device-toolbar">
-    <label class="device-field" for="device-select">
+<section class="installer" aria-label="Firmware installer">
+  <div class="controls">
+    <label class="field" for="version-select">
+      <span>Firmware version</span>
+      <select id="version-select"></select>
+    </label>
+    <label class="field" for="device-select">
       <span>Device</span>
       <select id="device-select"></select>
     </label>
-    <label class="device-field" for="device-search">
+    <label class="field" for="device-search">
       <span>Search</span>
       <input id="device-search" type="search" placeholder="Filter devices" autocomplete="off">
     </label>
@@ -20,38 +24,38 @@ Choose your device, then connect it over USB to install the matching pre-built f
 
   <div id="device-grid" class="device-grid" aria-label="Available devices"></div>
 
-  <div class="install-row">
+  <div class="install-box">
     <div>
-      <h3 id="selected-device-title">Select a device</h3>
-      <p id="selected-device-file">The installer will use the firmware manifest for the selected device.</p>
+      <h3 id="selected-title">Select firmware</h3>
+      <p id="selected-detail">The installer will use the selected version and device manifest.</p>
     </div>
     <esp-web-install-button id="install-button" manifest="firmware/Athom-ESP32-Device.manifest.json"></esp-web-install-button>
   </div>
 
-  <p id="device-status" class="device-status" role="status"></p>
+  <p id="status" class="status" role="status"></p>
 </section>
 
 <style>
-  .installer-panel {
+  .installer {
     margin-top: 1.5rem;
   }
 
-  .device-toolbar {
+  .controls {
     display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(180px, 0.8fr);
+    grid-template-columns: minmax(150px, 0.7fr) minmax(210px, 1fr) minmax(170px, 0.8fr);
     gap: 14px;
     margin-bottom: 18px;
   }
 
-  .device-field {
+  .field {
     display: grid;
     gap: 6px;
     color: #333;
     font-weight: 700;
   }
 
-  .device-field select,
-  .device-field input {
+  .field select,
+  .field input {
     box-sizing: border-box;
     width: 100%;
     min-height: 42px;
@@ -65,13 +69,13 @@ Choose your device, then connect it over USB to install the matching pre-built f
 
   .device-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 10px;
     margin-bottom: 20px;
   }
 
-  .device-option {
-    min-height: 54px;
+  .device-card {
+    min-height: 60px;
     border: 1px solid #d3d7dc;
     border-radius: 6px;
     padding: 10px 12px;
@@ -82,21 +86,15 @@ Choose your device, then connect it over USB to install the matching pre-built f
     font: inherit;
   }
 
-  .device-option:hover,
-  .device-option:focus {
+  .device-card:hover,
+  .device-card:focus {
     border-color: #1e9fea;
     outline: none;
   }
 
-  .device-option[aria-pressed="true"] {
+  .device-card[aria-pressed="true"] {
     border-color: #1e9fea;
     box-shadow: inset 4px 0 0 #1e9fea;
-  }
-
-  .device-empty {
-    grid-column: 1 / -1;
-    margin: 0;
-    color: #65717c;
   }
 
   .device-name {
@@ -105,7 +103,7 @@ Choose your device, then connect it over USB to install the matching pre-built f
     line-height: 1.25;
   }
 
-  .device-yaml {
+  .device-meta {
     display: block;
     margin-top: 4px;
     color: #65717c;
@@ -114,7 +112,13 @@ Choose your device, then connect it over USB to install the matching pre-built f
     overflow-wrap: anywhere;
   }
 
-  .install-row {
+  .empty {
+    grid-column: 1 / -1;
+    margin: 0;
+    color: #65717c;
+  }
+
+  .install-box {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -123,28 +127,28 @@ Choose your device, then connect it over USB to install the matching pre-built f
     padding-top: 18px;
   }
 
-  .install-row h3 {
+  .install-box h3 {
     margin: 0 0 4px;
     color: #24292f;
   }
 
-  .install-row p,
-  .device-status {
+  .install-box p,
+  .status {
     margin: 0;
     color: #4d5660;
   }
 
-  .device-status {
+  .status {
     margin-top: 12px;
     min-height: 1.4em;
   }
 
-  @media (max-width: 700px) {
-    .device-toolbar {
+  @media (max-width: 760px) {
+    .controls {
       grid-template-columns: 1fr;
     }
 
-    .install-row {
+    .install-box {
       align-items: flex-start;
       flex-direction: column;
     }
@@ -153,7 +157,7 @@ Choose your device, then connect it over USB to install the matching pre-built f
 
 <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
 <script>
-  const fallbackDevices = [
+  const fallbackDeviceIds = [
     "athom-1gang-switch",
     "athom-2ch-relay-board",
     "athom-2gang-switch",
@@ -176,26 +180,23 @@ Choose your device, then connect it over USB to install the matching pre-built f
     "athom-smart-plug-v5",
     "athom-wall-outlet-v3",
     "athom-zigbee-gateway"
-  ].map((id) => ({
-    id,
-    name: formatDeviceName(id),
-    yaml: `${id}.yaml`,
-    manifest: `firmware/${id}.manifest.json`
-  }));
+  ];
 
   const state = {
-    devices: [],
-    selectedId: "",
+    versions: [],
+    selectedVersion: "",
+    selectedDevice: "",
     filter: ""
   };
 
-  const select = document.querySelector("#device-select");
+  const versionSelect = document.querySelector("#version-select");
+  const deviceSelect = document.querySelector("#device-select");
   const search = document.querySelector("#device-search");
   const grid = document.querySelector("#device-grid");
   const installButton = document.querySelector("#install-button");
-  const title = document.querySelector("#selected-device-title");
-  const file = document.querySelector("#selected-device-file");
-  const status = document.querySelector("#device-status");
+  const title = document.querySelector("#selected-title");
+  const detail = document.querySelector("#selected-detail");
+  const status = document.querySelector("#status");
 
   function formatDeviceName(id) {
     return id
@@ -204,62 +205,114 @@ Choose your device, then connect it over USB to install the matching pre-built f
       .join(" ");
   }
 
-  function normalizeDevice(device) {
+  function normalizeDevice(device, version) {
     return {
       id: device.id,
       name: device.name || formatDeviceName(device.id),
       yaml: device.yaml || `${device.id}.yaml`,
-      manifest: device.manifest || `firmware/${device.id}.manifest.json`
+      manifest: device.manifest || `firmware/${version}/${device.id}.manifest.json`
     };
   }
 
-  async function loadDevices() {
+  function normalizeVersion(version) {
+    return {
+      version: version.version,
+      tag: version.tag || `esphome-${version.version}`,
+      devices: (version.devices || []).map((device) => normalizeDevice(device, version.version))
+    };
+  }
+
+  function fallbackVersions() {
+    return [{
+      version: "latest",
+      tag: "latest",
+      devices: fallbackDeviceIds.map((id) => ({
+        id,
+        name: formatDeviceName(id),
+        yaml: `${id}.yaml`,
+        manifest: `firmware/${id}.manifest.json`
+      }))
+    }];
+  }
+
+  async function loadInstallerIndex() {
     try {
-      const response = await fetch("firmware/devices.json", { cache: "no-store" });
+      const response = await fetch("firmware/versions.json", { cache: "no-store" });
       if (!response.ok) {
-        throw new Error(`devices.json returned ${response.status}`);
+        throw new Error(`versions.json returned ${response.status}`);
       }
+
       const data = await response.json();
-      state.devices = data.devices.map(normalizeDevice);
-      status.textContent = `Firmware index loaded for ESPHome ${data.version}.`;
+      state.versions = data.versions.map(normalizeVersion);
+      state.selectedVersion = data.latest || state.versions[0]?.version || "";
+      status.textContent = `Loaded ${state.versions.length} firmware version${state.versions.length === 1 ? "" : "s"}; latest is ${state.selectedVersion}.`;
     } catch (error) {
-      state.devices = fallbackDevices;
-      status.textContent = "Firmware index is not available yet; using the built-in device list.";
+      state.versions = fallbackVersions();
+      state.selectedVersion = state.versions[0].version;
+      status.textContent = "Version index is not available yet; using latest firmware paths.";
     }
 
-    state.selectedId = state.devices[0]?.id || "";
+    state.selectedDevice = getCurrentDevices()[0]?.id || "";
     render();
   }
 
+  function getCurrentVersion() {
+    return state.versions.find((item) => item.version === state.selectedVersion) || state.versions[0];
+  }
+
+  function getCurrentDevices() {
+    return getCurrentVersion()?.devices || [];
+  }
+
   function getSelectedDevice() {
-    return state.devices.find((device) => device.id === state.selectedId) || state.devices[0];
+    return getCurrentDevices().find((device) => device.id === state.selectedDevice) || getCurrentDevices()[0];
   }
 
   function getVisibleDevices() {
     const query = state.filter.trim().toLowerCase();
+    const devices = getCurrentDevices();
     if (!query) {
-      return state.devices;
+      return devices;
     }
 
-    return state.devices.filter((device) =>
+    return devices.filter((device) =>
       `${device.name} ${device.id} ${device.yaml}`.toLowerCase().includes(query)
     );
   }
 
-  function selectDevice(id) {
-    state.selectedId = id;
+  function chooseVersion(version) {
+    state.selectedVersion = version;
+    state.selectedDevice = getCurrentDevices()[0]?.id || "";
     render();
   }
 
-  function renderSelect() {
-    select.replaceChildren();
-    for (const device of state.devices) {
+  function chooseDevice(deviceId) {
+    state.selectedDevice = deviceId;
+    render();
+  }
+
+  function renderVersionSelect() {
+    versionSelect.replaceChildren();
+    for (const item of state.versions) {
+      const option = document.createElement("option");
+      option.value = item.version;
+      option.textContent = item.version;
+      option.selected = item.version === state.selectedVersion;
+      versionSelect.append(option);
+    }
+    versionSelect.value = state.selectedVersion;
+  }
+
+  function renderDeviceSelect() {
+    deviceSelect.replaceChildren();
+    for (const device of getCurrentDevices()) {
       const option = document.createElement("option");
       option.value = device.id;
       option.textContent = device.name;
-      option.selected = device.id === state.selectedId;
-      select.append(option);
+      option.selected = device.id === state.selectedDevice;
+      deviceSelect.append(option);
     }
+    deviceSelect.value = state.selectedDevice;
   }
 
   function renderGrid() {
@@ -268,7 +321,7 @@ Choose your device, then connect it over USB to install the matching pre-built f
 
     if (visibleDevices.length === 0) {
       const empty = document.createElement("p");
-      empty.className = "device-empty";
+      empty.className = "empty";
       empty.textContent = "No matching devices.";
       grid.append(empty);
       return;
@@ -277,46 +330,45 @@ Choose your device, then connect it over USB to install the matching pre-built f
     for (const device of visibleDevices) {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "device-option";
-      button.setAttribute("aria-pressed", String(device.id === state.selectedId));
-      button.dataset.deviceId = device.id;
-      button.innerHTML = `
-        <span class="device-name"></span>
-        <span class="device-yaml"></span>
-      `;
+      button.className = "device-card";
+      button.setAttribute("aria-pressed", String(device.id === state.selectedDevice));
+      button.innerHTML = '<span class="device-name"></span><span class="device-meta"></span>';
       button.querySelector(".device-name").textContent = device.name;
-      button.querySelector(".device-yaml").textContent = device.yaml;
-      button.addEventListener("click", () => selectDevice(device.id));
+      button.querySelector(".device-meta").textContent = device.yaml;
+      button.addEventListener("click", () => chooseDevice(device.id));
       grid.append(button);
     }
   }
 
   function renderInstaller() {
+    const version = getCurrentVersion();
     const device = getSelectedDevice();
-    if (!device) {
-      title.textContent = "No devices found";
-      file.textContent = "";
+
+    if (!version || !device) {
+      title.textContent = "No firmware available";
+      detail.textContent = "";
       installButton.setAttribute("manifest", "firmware/Athom-ESP32-Device.manifest.json");
       return;
     }
 
-    title.textContent = device.name;
-    file.textContent = `${device.yaml} -> ${device.manifest}`;
+    title.textContent = `${device.name} - ${version.version}`;
+    detail.textContent = `${device.yaml} -> ${device.manifest}`;
     installButton.setAttribute("manifest", device.manifest);
   }
 
   function render() {
-    renderSelect();
-    select.value = state.selectedId;
+    renderVersionSelect();
+    renderDeviceSelect();
     renderGrid();
     renderInstaller();
   }
 
-  select.addEventListener("change", (event) => selectDevice(event.target.value));
+  versionSelect.addEventListener("change", (event) => chooseVersion(event.target.value));
+  deviceSelect.addEventListener("change", (event) => chooseDevice(event.target.value));
   search.addEventListener("input", (event) => {
     state.filter = event.target.value;
     renderGrid();
   });
 
-  loadDevices();
+  loadInstallerIndex();
 </script>
