@@ -122,7 +122,7 @@ mdns:
 
 web_server:
   port: 80
-#  version: 3
+  version: 3
 
 network:
   enable_ipv6: ${ipv6_enable}
