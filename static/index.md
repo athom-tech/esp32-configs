@@ -1,6 +1,6 @@
 # About
 
-ESPhome project by Shenzhen Athom Technology Co., Ltd., China.
+Maintained by Shenzhen Athom Technology Co., Ltd., China, this ESPHome project provides configuration files and pre-built firmware for supported Athom devices.
 
 # Installation
 

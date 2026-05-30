@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="{{ site.lang | default: 'en-US' }}">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#157878">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>{{ page.title | default: site.title }}</title>
+    <link rel="stylesheet" href="{{ '/assets/css/style.css?v=' | append: site.github.build_revision | relative_url }}">
+  </head>
+  <body>
+    <div id="header_wrap" class="outer">
+      <header class="inner">
+        {% if site.github.is_project_page %}
+          <a id="forkme_banner" href="{{ site.github.repository_url }}">View on GitHub</a>
+        {% endif %}
+
+        <h1 id="project_title">{{ site.title | default: site.github.repository_name }}</h1>
+        <h2 id="project_tagline">{{ site.description | default: site.github.project_tagline }}</h2>
+      </header>
+    </div>
+
+    <div id="main_content_wrap" class="outer">
+      <section id="main_content" class="inner">
+        {{ content }}
+      </section>
+    </div>
+
+    <div id="footer_wrap" class="outer">
+      <footer class="inner">
+        <p class="copyright">Athom ESPHome Firmware maintained by Shenzhen Athom Technology Co., Ltd.</p>
+        <p>Powered by <a href="https://esphome.io/">ESPHome</a> and <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>.</p>
+      </footer>
+    </div>
+  </body>
+</html>
