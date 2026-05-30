@@ -18,6 +18,9 @@ on:
 permissions:
   contents: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.inputs.esphome_version || 'latest-stable' }}
   cancel-in-progress: false
@@ -36,7 +39,7 @@ jobs:
       files: ${{ steps.files.outputs.files }}
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Resolve ESPHome release
         id: release
@@ -121,7 +124,7 @@ jobs:
         file: ${{ fromJson(needs.prepare.outputs.matrix) }}
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: ESPHome ${{ needs.prepare.outputs.esphome-version }}
         id: build
@@ -224,7 +227,7 @@ jobs:
           test -f "firmware/${name}/manifest.json"
 
       - name: Upload firmware artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: firmware-${{ matrix.file }}
           path: firmware/
@@ -240,7 +243,7 @@ jobs:
     if: needs.prepare.outputs.should-build == 'true'
     steps:
       - name: Download firmware artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: downloaded-artifacts
           pattern: firmware-*
@@ -262,6 +265,19 @@ jobs:
           else
             cp -R downloaded-artifacts/. firmware/
           fi
+
+          jq -n --arg version "${ESPHOME_VERSION}" \
+                --argjson devices "${FILES_JSON}" \
+                '{
+                  version: $version,
+                  generated_at: (now | todateiso8601),
+                  devices: ($devices | map({
+                    id: .,
+                    name: (. | split("-") | map(ascii_upcase[0:1] + .[1:]) | join(" ")),
+                    yaml: (. + ".yaml"),
+                    manifest: ("firmware/" + . + ".manifest.json")
+                  }))
+                }' > release-assets/devices.json
 
           jq -n --arg name "Athom ESP32 Device" \
                 --arg version "${ESPHOME_VERSION}" \

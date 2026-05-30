@@ -12,6 +12,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   discover:
     name: Discover ESPHome YAML files
@@ -20,7 +23,7 @@ jobs:
       matrix: ${{ steps.files.outputs.matrix }}
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Discover root-level YAML files
         id: files
@@ -52,7 +55,7 @@ jobs:
           - dev
     steps:
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: ESPHome ${{ matrix.esphome-version }}
         uses: esphome/build-action@v7
