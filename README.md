@@ -4,7 +4,8 @@ This repository contains ESPHome YAML configurations for Athom ESP32, ESP32-C3, 
 
 ## Quick Links
 
-- Repository: <https://github.com/athom-tech/esp32-configs>
+- Official website: <https://www.athom.tech/>
+- AliExpress store: <https://iotorero.aliexpress.com/>
 - Web firmware installer: <https://athom-tech.github.io/esp32-configs/>
 - Releases: <https://github.com/athom-tech/esp32-configs/releases>
 - ESPHome documentation: <https://esphome.io/>
