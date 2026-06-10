@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom 12W RGBCW Bulb"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.1.3"
+  project_version: "v3.1.4"
    # Restore the light (GPO switch) upon reboot to state:
   light_restore_mode: RESTORE_DEFAULT_ON
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
@@ -42,6 +42,41 @@ globals:
     restore_value: yes
     initial_value: "1"
 
+  - id: remote_mac
+    type: std::array<uint8_t, 6>
+    restore_value: yes
+    initial_value: "std::array<uint8_t, 6>{0, 0, 0, 0, 0, 0}"
+
+  - id: remote_paired
+    type: bool
+    restore_value: yes
+    initial_value: "false"
+
+  - id: remote_last_seq
+    type: uint32_t
+    restore_value: no
+    initial_value: "0xFFFFFFFF"
+
+  - id: remote_button
+    type: uint8_t
+    restore_value: no
+    initial_value: "0"
+
+  - id: remote_pairing
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+  - id: remote_pair_deadline
+    type: uint32_t
+    restore_value: no
+    initial_value: "0"
+
+  - id: bluetooth_proxy_enabled
+    type: bool
+    restore_value: yes
+    initial_value: "false"
+
 select:
   - platform: template
     name: "Power On State"
@@ -62,7 +97,7 @@ esphome:
   comment: "${device_description}"
   area: "${room}"
   name_add_mac_suffix: true
-  min_version: 2025.8.0
+  min_version: 2026.5.0
   project:
     name: "${project_name}"
     version: "${project_version}"
@@ -95,6 +130,38 @@ esphome:
                       break;
                       }
               }
+    - priority: -100
+      then:
+        - if:
+            condition:
+              lambda: 'return id(remote_paired);'
+            then:
+              - espnow.peer.add:
+                  id: espnow_component
+                  address: !lambda |-
+                    return id(remote_mac);
+              - lambda: |-
+                  char mac[18];
+                  snprintf(mac, sizeof(mac), "%02X:%02X:%02X:%02X:%02X:%02X",
+                           id(remote_mac)[0], id(remote_mac)[1],
+                           id(remote_mac)[2], id(remote_mac)[3],
+                           id(remote_mac)[4], id(remote_mac)[5]);
+                  id(remote_paired_text).publish_state(mac);
+                  id(remote_pairing_status).publish_state("Paired");
+            else:
+              - lambda: |-
+                  id(remote_paired_text).publish_state("None");
+                  id(remote_pairing_status).publish_state("Idle");
+        - if:
+            condition:
+              and:
+                - lambda: 'return id(bluetooth_proxy_enabled);'
+                - api.connected:
+            then:
+              - esp32_ble_tracker.start_scan:
+                  continuous: true
+            else:
+              - esp32_ble_tracker.stop_scan:
 
 esp32:
   board: esp32-c3-devkitm-1
@@ -120,8 +187,12 @@ api:
   # Only enable BLE tracking when wifi is up and api is connected
   # Gives single-core ESP32-C3 devices time to manage wifi and authenticate with api
   on_client_connected:
-     - esp32_ble_tracker.start_scan:
-        continuous: true
+    - if:
+        condition:
+          lambda: 'return id(bluetooth_proxy_enabled);'
+        then:
+          - esp32_ble_tracker.start_scan:
+              continuous: true
   # Disable BLE tracking when there are no api connections live
   on_client_disconnected:
     if:
@@ -155,11 +226,126 @@ wifi:
   # Define dns domain / suffix to add to hostname
   domain: "${dns_domain}"
 
-
 captive_portal:
 
 esp32_improv:
   authorizer: none
+
+espnow:
+  id: espnow_component
+  auto_add_peer: false
+  enable_on_boot: true
+  on_unknown_peer:
+    - lambda: |-
+        const char *const TAG = "espnow_remote";
+        const bool valid_espnow_packet = size == 13 && (data[0] == 0x91 || data[0] == 0x81 || data[0] == 0x80);
+        if (!valid_espnow_packet) {
+          ESP_LOGD(TAG, "Ignoring unknown ESP-NOW packet from %s, size=%u",
+                   format_mac_address_pretty(info.src_addr).c_str(), size);
+          return;
+        }
+
+        char src[18];
+        snprintf(src, sizeof(src), "%02X:%02X:%02X:%02X:%02X:%02X",
+                 info.src_addr[0], info.src_addr[1], info.src_addr[2],
+                 info.src_addr[3], info.src_addr[4], info.src_addr[5]);
+        id(remote_last_seen).publish_state(src);
+        id(remote_battery).publish_state(data[8]);
+
+        const bool is_saved_remote =
+            id(remote_paired) &&
+            memcmp(id(remote_mac).data(), info.src_addr, id(remote_mac).size()) == 0;
+
+        if (is_saved_remote) {
+          ESP_LOGI(TAG, "Restoring saved ESP-NOW remote peer %s", src);
+          return;
+        }
+
+        if (!id(remote_pairing)) {
+          ESP_LOGD(TAG, "Saw unpaired remote %s; press Pair ESP-NOW Remote to bind it", src);
+          return;
+        }
+
+        for (size_t i = 0; i < id(remote_mac).size(); i++) {
+          id(remote_mac)[i] = info.src_addr[i];
+        }
+        id(remote_paired) = true;
+        id(remote_pairing) = false;
+        id(remote_paired_text).publish_state(src);
+        id(remote_pairing_status).publish_state("Paired");
+        ESP_LOGI(TAG, "Paired ESP-NOW remote %s", src);
+    - if:
+        condition:
+          lambda: |-
+            const bool valid_espnow_packet = size == 13 && (data[0] == 0x91 || data[0] == 0x81 || data[0] == 0x80);
+            return valid_espnow_packet && id(remote_paired) &&
+                   memcmp(id(remote_mac).data(), info.src_addr, id(remote_mac).size()) == 0;
+        then:
+          - espnow.peer.add:
+              id: espnow_component
+              address: !lambda |-
+                return std::array<uint8_t, 6>{info.src_addr[0], info.src_addr[1], info.src_addr[2],
+                                              info.src_addr[3], info.src_addr[4], info.src_addr[5]};
+  on_receive:
+    - if:
+        condition:
+          lambda: |-
+            const char *const TAG = "espnow_remote";
+            const bool valid_espnow_packet = size == 13 && (data[0] == 0x91 || data[0] == 0x81 || data[0] == 0x80);
+            if (!valid_espnow_packet) return false;
+
+            if (!id(remote_paired) ||
+                memcmp(id(remote_mac).data(), info.src_addr, id(remote_mac).size()) != 0) {
+              ESP_LOGD(TAG, "Ignoring ESP-NOW packet from unpaired sender %s",
+                       format_mac_address_pretty(info.src_addr).c_str());
+              return false;
+            }
+
+            const uint32_t seq = uint32_t(data[1]) | (uint32_t(data[2]) << 8) |
+                                 (uint32_t(data[3]) << 16) | (uint32_t(data[4]) << 24);
+            const uint8_t button = data[6];
+            id(remote_battery).publish_state(data[8]);
+            if (seq == id(remote_last_seq)) return false;
+            id(remote_last_seq) = seq;
+            id(remote_button) = button;
+
+            ESP_LOGD(TAG, "ESP-NOW remote button=%u seq=%lu battery=%u",
+                     unsigned(button), static_cast<unsigned long>(seq), unsigned(data[8]));
+            return true;
+        then:
+          - script.execute:
+              id: remote_handle_button
+              button: !lambda 'return id(remote_button);'
+  on_broadcast:
+    - if:
+        condition:
+          lambda: |-
+            const char *const TAG = "espnow_remote";
+            const bool valid_espnow_packet = size == 13 && (data[0] == 0x91 || data[0] == 0x81 || data[0] == 0x80);
+            if (!valid_espnow_packet) return false;
+
+            if (!id(remote_paired) ||
+                memcmp(id(remote_mac).data(), info.src_addr, id(remote_mac).size()) != 0) {
+              ESP_LOGD(TAG, "Ignoring ESP-NOW packet from unpaired sender %s",
+                       format_mac_address_pretty(info.src_addr).c_str());
+              return false;
+            }
+
+            const uint32_t seq = uint32_t(data[1]) | (uint32_t(data[2]) << 8) |
+                                 (uint32_t(data[3]) << 16) | (uint32_t(data[4]) << 24);
+            const uint8_t button = data[6];
+            id(remote_battery).publish_state(data[8]);
+            if (seq == id(remote_last_seq)) return false;
+            id(remote_last_seq) = seq;
+            id(remote_button) = button;
+
+            ESP_LOGD(TAG, "ESP-NOW remote button=%u seq=%lu battery=%u",
+                     unsigned(button), static_cast<unsigned long>(seq), unsigned(data[8]));
+            return true;
+        then:
+          - script.execute:
+              id: remote_handle_button
+              button: !lambda 'return id(remote_button);'
 
 esp32_ble_tracker:
   scan_parameters:
@@ -176,6 +362,32 @@ bluetooth_proxy:
 
 dashboard_import:
   package_import_url: github://athom-tech/esp32-configs/athom-rgbcw-light.yaml
+
+switch:
+  - platform: template
+    name: "Bluetooth Proxy"
+    id: bluetooth_proxy_switch
+    icon: mdi:bluetooth
+    entity_category: config
+    restore_mode: DISABLED
+    lambda: 'return id(bluetooth_proxy_enabled);'
+    turn_on_action:
+      - globals.set:
+          id: bluetooth_proxy_enabled
+          value: "true"
+      - if:
+          condition:
+            api.connected:
+          then:
+            - esp32_ble_tracker.start_scan:
+                continuous: true
+      - lambda: 'ESP_LOGI("bluetooth_proxy_switch", "Bluetooth proxy scanning enabled");'
+    turn_off_action:
+      - globals.set:
+          id: bluetooth_proxy_enabled
+          value: "false"
+      - esp32_ble_tracker.stop_scan:
+      - lambda: 'ESP_LOGI("bluetooth_proxy_switch", "Bluetooth proxy scanning disabled");'
 
 binary_sensor:
   - platform: status
@@ -205,6 +417,15 @@ sensor:
     entity_category: "diagnostic"
     device_class: ""
 
+  - platform: template
+    name: "ESP-NOW Remote Battery"
+    id: remote_battery
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    update_interval: never
+    device_class: battery
+    entity_category: diagnostic
+
 button:
   - platform: restart
     name: "Restart"
@@ -219,6 +440,42 @@ button:
     name: "Safe Mode"
     internal: false
     entity_category: config
+
+  - platform: template
+    name: "Pair ESP-NOW Remote"
+    id: pair_espnow_remote
+    entity_category: config
+    on_press:
+      then:
+        - lambda: |-
+            id(remote_pairing) = true;
+            id(remote_pair_deadline) = millis() + 60000;
+            id(remote_pairing_status).publish_state("Pairing for 60 seconds");
+            ESP_LOGI("espnow_remote", "Pairing enabled for 60 seconds; press a ESP-NOW remote button");
+        - script.execute: remote_pairing_timeout
+
+  - platform: template
+    name: "Clear ESP-NOW Remote"
+    id: clear_espnow_remote
+    entity_category: config
+    on_press:
+      then:
+        - if:
+            condition:
+              lambda: 'return id(remote_paired);'
+            then:
+              - espnow.peer.delete:
+                  id: espnow_component
+                  address: !lambda |-
+                    return id(remote_mac);
+        - lambda: |-
+            id(remote_mac) = std::array<uint8_t, 6>{0, 0, 0, 0, 0, 0};
+            id(remote_paired) = false;
+            id(remote_pairing) = false;
+            id(remote_last_seq) = 0xFFFFFFFF;
+            id(remote_paired_text).publish_state("None");
+            id(remote_pairing_status).publish_state("Idle");
+            ESP_LOGI("espnow_remote", "Cleared paired ESP-NOW remote");
 
 output:
   - platform: ledc
@@ -289,6 +546,27 @@ text_sensor:
     entity_category: diagnostic
     device_class: timestamp
 
+  - platform: template
+    name: "Paired ESP-NOW Remote"
+    id: remote_paired_text
+    icon: mdi:remote
+    update_interval: never
+    entity_category: diagnostic
+
+  - platform: template
+    name: "Last ESP-NOW Remote"
+    id: remote_last_seen
+    icon: mdi:remote
+    update_interval: never
+    entity_category: diagnostic
+
+  - platform: template
+    name: "ESP-NOW Pairing Status"
+    id: remote_pairing_status
+    icon: mdi:wifi
+    update_interval: never
+    entity_category: diagnostic
+
 time:
   - platform: sntp
     id: sntp_time
@@ -314,6 +592,231 @@ time:
                   state: !lambda 'return id(sntp_time).now().strftime("%a %d %b %Y - %I:%M:%S %p");'
 
 script:
+  - id: remote_pairing_timeout
+    mode: restart
+    then:
+      - delay: 60s
+      - lambda: |-
+          if (id(remote_pairing) && int32_t(millis() - id(remote_pair_deadline)) >= 0) {
+            id(remote_pairing) = false;
+            id(remote_pairing_status).publish_state("Idle");
+            ESP_LOGI("espnow_remote", "ESP-NOW remote pairing window expired");
+          }
+
+  - id: remote_handle_button
+    mode: queued
+    max_runs: 4
+    parameters:
+      button: uint8_t
+    then:
+      - if:
+          condition:
+            lambda: 'return button == 1 || button == 100;'    #ON
+          then:
+            - script.execute: remote_on
+      - if:
+          condition:
+            lambda: 'return button == 2 || button == 101;'    #OFF
+          then:
+            - script.execute: remote_off
+      - if:
+          condition:
+            lambda: 'return button == 3;'       #Night
+          then:
+            - script.execute:
+                id: remote_set_cwww
+                cold_white: 0.0
+                warm_white: 1.0
+                brightness: 0.2
+      - if:
+          condition:
+            lambda: 'return button == 8 || button == 103;'   #Brightness -
+          then:
+            - script.execute:
+                id: remote_brightness_step
+                increase: false
+      - if:
+          condition:
+            lambda: 'return button == 9 || button == 102;'  #Brightness +
+          then:
+            - script.execute:
+                id: remote_brightness_step
+                increase: true
+      - if:
+          condition:
+            lambda: 'return button == 16;'   #P1
+          then:
+            - script.execute:
+                id: remote_set_cwww
+                cold_white: 0.0
+                warm_white: 1.0
+                brightness: 1.0
+      - if:
+          condition:
+            lambda: 'return button == 17;' #P2
+          then:
+            - script.execute:
+                id: remote_set_cwww
+                cold_white: 1.0
+                warm_white: 0.0
+                brightness: 1.0
+      - if:
+          condition:
+            lambda: 'return button == 18;'  #P3
+          then:
+            - script.execute:
+                id: remote_set_rgb
+                red: 1.0
+                green: 0.0
+                blue: 0.0
+                brightness: 1.0
+      - if:
+          condition:
+            lambda: 'return button == 19;'  #P4
+          then:
+            - script.execute:
+                id: remote_set_rgb
+                red: 0.0
+                green: 1.0
+                blue: 0.0
+                brightness: 1.0
+      - if:
+          condition:
+            lambda: 'return button == 20;' #P5
+          then:
+            - script.execute:
+                id: remote_set_rgb
+                red: 0.0
+                green: 0.0
+                blue: 1.0
+                brightness: 1.0
+      - if:
+          condition:
+            lambda: 'return button == 21;'   #P6
+          then:
+            - script.execute:
+                id: remote_set_rgb
+                red: 0.65
+                green: 0.0
+                blue: 1.0
+                brightness: 0.85
+      - if:
+          condition:
+            lambda: 'return button == 22;'  #P7
+          then:
+            - script.execute:
+                id: remote_set_cwww
+                cold_white: 0.35
+                warm_white: 0.65
+                brightness: 0.65
+      - if:
+          condition:
+            lambda: |-
+              switch (button) {
+                case 1:
+                case 2:
+                case 3:
+                case 8:
+                case 9:
+                case 16:
+                case 17:
+                case 18:
+                case 19:
+                case 20:
+                case 21:
+                case 22:
+                case 100:
+                case 101:
+                case 102:
+                case 103:
+                  return false;
+                default:
+                  return true;
+              }
+          then:
+            - lambda: 'ESP_LOGD("espnow_remote", "Unhandled ESP-NOW remote button %u", unsigned(button));'
+
+  - id: remote_on
+    mode: restart
+    then:
+      - lambda: |-
+          auto call = id(rgbww_light).turn_on();
+          call.set_transition_length(700);
+          call.perform();
+
+  - id: remote_off
+    mode: restart
+    then:
+      - lambda: |-
+          auto call = id(rgbww_light).turn_off();
+          call.set_transition_length(700);
+          call.perform();
+
+  - id: remote_set_rgb
+    mode: restart
+    parameters:
+      red: float
+      green: float
+      blue: float
+      brightness: float
+    then:
+      - lambda: |-
+          auto call = id(rgbww_light).turn_on();
+          call.set_transition_length(700);
+          call.set_color_mode_if_supported(ColorMode::RGB);
+          call.set_brightness(brightness);
+          call.set_rgb(red, green, blue);
+          call.perform();
+
+  - id: remote_set_cwww
+    mode: restart
+    parameters:
+      cold_white: float
+      warm_white: float
+      brightness: float
+    then:
+      - lambda: |-
+          auto call = id(rgbww_light).turn_on();
+          call.set_transition_length(700);
+          call.set_color_mode_if_supported(ColorMode::COLD_WARM_WHITE);
+          call.set_brightness(brightness);
+          call.set_cold_white(cold_white);
+          call.set_warm_white(warm_white);
+          call.perform();
+
+  - id: remote_brightness_step
+    mode: restart
+    parameters:
+      increase: bool
+    then:
+      - lambda: |-
+          static const uint8_t steps[] = {6, 9, 14, 22, 33, 50, 75, 113, 170, 255};
+          if (!id(rgbww_light).current_values.is_on() && !increase) return;
+
+          uint8_t current = uint8_t(id(rgbww_light).current_values.get_brightness() * 255.0f + 0.5f);
+          uint8_t target = steps[0];
+          if (increase) {
+            target = steps[sizeof(steps) / sizeof(steps[0]) - 1];
+            for (uint8_t step : steps) {
+              if (step > current) {
+                target = step;
+                break;
+              }
+            }
+          } else {
+            for (int i = int(sizeof(steps) / sizeof(steps[0])) - 1; i >= 0; i--) {
+              if (steps[i] < current) {
+                target = steps[i];
+                break;
+              }
+            }
+          }
+
+          auto call = id(rgbww_light).turn_on();
+          call.set_transition_length(120);
+          call.set_brightness(float(target) / 255.0f);
+          call.perform();
+
   - id: fast_boot_script
     then:
       - if:
