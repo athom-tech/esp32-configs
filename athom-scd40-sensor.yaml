@@ -5,7 +5,7 @@ substitutions:
   room: ""
   device_description: "athom scd40 CO₂ sensor"
   project_name: "China Athom Technology.CO₂ Sensor"
-  project_version: "1.0.7"
+  project_version: "1.0.8"
   update_interval: 5s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
@@ -37,7 +37,7 @@ esphome:
   comment: "${device_description}"
   area: "${room}"
   name_add_mac_suffix: true
-  min_version: 2025.7.0
+  min_version: 2026.6.0
   project:
     name: "${project_name}"
     version: "${project_version}"
@@ -143,11 +143,13 @@ sensor:
       name: "CO2"
       id: "co2"
       on_value:
-        if:
-          condition:
-            switch.is_on: status_light
-          then:
-            - script.execute: update_aqi
+        - script.execute:
+            id: update_aqi
+        - if:
+            condition:
+              switch.is_on: status_light
+            then:
+              - script.execute: update_light
     temperature:
       name: "Temperature"
       id: "temperature"
@@ -326,14 +328,37 @@ script:
     then:
       - if:
           condition:
-            or:
-              - sensor.in_range:
-                  id: co2
-                  above: 1500
+              sensor.in_range:
+               id: co2
+               above: 1500
           then:
             - text_sensor.template.publish:
                 id: aqi
                 state: Bad
+          else:
+            - if:
+                condition:
+                    sensor.in_range:
+                      id: co2
+                      above: 800
+                      below: 1500
+                then:
+                  - text_sensor.template.publish:
+                      id: aqi
+                      state: Acceptable
+                else:
+                  - text_sensor.template.publish:
+                      id: aqi
+                      state: Good
+  - id: update_light
+    mode: restart
+    then:
+      - if:
+          condition:
+            text_sensor.state:
+              id: aqi
+              state: Bad
+          then:
             - light.turn_on:
                 id: led
                 brightness: 100%
@@ -343,15 +368,10 @@ script:
           else:
             - if:
                 condition:
-                  or:
-                    - sensor.in_range:
-                        id: co2
-                        above: 800
-                        below: 1500
+                  text_sensor.state:
+                    id: aqi
+                    state: Acceptable
                 then:
-                  - text_sensor.template.publish:
-                      id: aqi
-                      state: Acceptable
                   - light.turn_on:
                       id: led
                       brightness: 50%
@@ -359,9 +379,6 @@ script:
                       green: 100%
                       blue: 0%
                 else:
-                  - text_sensor.template.publish:
-                      id: aqi
-                      state: Good
                   - light.turn_on:
                       id: led
                       brightness: 50%
