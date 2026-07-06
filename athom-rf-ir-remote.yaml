@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom RF IR Remote"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.0.1"
+  project_version: "v3.0.2"
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
   # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
@@ -69,6 +69,25 @@ esp32:
 
 preferences:
   flash_write_interval: 1min
+
+# Global variables for IR learning
+globals:
+  - id: is_learning_mode
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: signal_select_index
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: filter_size
+    type: int
+    restore_value: no
+    initial_value: '10'
+
+# Flash storage component for saving IR signals
+Flash_comp:
+  id: signal_nvs
 
 api:
   reboot_timeout: 0s
@@ -132,6 +151,11 @@ esp32_improv:
 dashboard_import:
   package_import_url: github://athom-tech/esp32-configs/athom-rf-ir-remote.yaml
 
+# Include the local Flash storage component
+external_components:
+  - source: github://athom-tech/esp32-configs@main
+    components: [Flash_comp]
+
 remote_receiver:
   - pin:
       number: ${RF_RX_PIN}
@@ -145,7 +169,21 @@ remote_receiver:
       inverted: true
     dump: all
     tolerance: 25%
+    idle: 65500us
+    clock_resolution: "500000"
     id: ir_receiver
+    on_raw:
+      - lambda: |-
+          if (id(is_learning_mode)) {
+            if (x.size() > id(filter_size)) {
+              id(signal_nvs).save_to_nvs(id(signal_select_index), x);
+              ESP_LOGI("IR_LEARNING", "Signal saved to slot %d, size: %d", id(signal_select_index), x.size());
+              id(is_learning_mode) = false;
+              id(status_text).publish_state("Signal learned!");
+            } else {
+              ESP_LOGW("IR_LEARNING", "Signal too short: %d", x.size());
+            }
+          }
 
 remote_transmitter:
   - pin:
@@ -251,6 +289,34 @@ button:
     internal: false
     entity_category: config
 
+  # IR learning button
+  - platform: template
+    name: "IR Learn"
+    icon: mdi:remote-tv
+    on_press:
+      - lambda: |-
+          id(is_learning_mode) = true;
+          ESP_LOGI("IR_LEARNING", "Learning mode activated for slot %d", id(signal_select_index));
+          id(status_text).publish_state("Ready to learn...");
+
+  # IR send button
+  - platform: template
+    name: "IR Send"
+    icon: mdi:send
+    on_press:
+      - script.execute: send_raw_signal
+
+  # Clear the signal in the current slot
+  - platform: template
+    name: "IR Clear Slot"
+    icon: mdi:delete
+    on_press:
+      - lambda: |-
+          std::vector<int> empty_signal;
+          id(signal_nvs).save_to_nvs(id(signal_select_index), empty_signal);
+          ESP_LOGI("IR_LEARNING", "Cleared slot %d", id(signal_select_index));
+          id(status_text).publish_state("Slot cleared");
+
 light:
   - platform: status_led
     name: "Status LED"
@@ -277,6 +343,70 @@ text_sensor:
     id: device_last_restart
     icon: mdi:clock
     entity_category: diagnostic
+
+  # IR learning status display
+  - platform: template
+    name: "IR Learning Status"
+    id: status_text
+    icon: mdi:information
+
+# Signal slot selector
+select:
+  - platform: template
+    name: "IR Signal Slot"
+    id: signal_slot_select
+    optimistic: true
+    options:
+      - "Signal 0"
+      - "Signal 1"
+      - "Signal 2"
+      - "Signal 3"
+      - "Signal 4"
+      - "Signal 5"
+      - "Signal 6"
+      - "Signal 7"
+      - "Signal 8"
+      - "Signal 9"
+    initial_option: "Signal 0"
+    on_value:
+      - lambda: |-
+          if (x == "Signal 0") id(signal_select_index) = 0;
+          else if (x == "Signal 1") id(signal_select_index) = 1;
+          else if (x == "Signal 2") id(signal_select_index) = 2;
+          else if (x == "Signal 3") id(signal_select_index) = 3;
+          else if (x == "Signal 4") id(signal_select_index) = 4;
+          else if (x == "Signal 5") id(signal_select_index) = 5;
+          else if (x == "Signal 6") id(signal_select_index) = 6;
+          else if (x == "Signal 7") id(signal_select_index) = 7;
+          else if (x == "Signal 8") id(signal_select_index) = 8;
+          else if (x == "Signal 9") id(signal_select_index) = 9;
+          ESP_LOGI("IR_LEARNING", "Selected slot: %d", id(signal_select_index));
+
+# Script for sending raw IR signals
+script:
+  - id: send_raw_signal
+    then:
+      - lambda: |-
+          std::vector<int> signal_data = id(signal_nvs).load_from_nvs<int>(id(signal_select_index));
+          if (signal_data.size() > 0) {
+            ESP_LOGI("IR_SEND", "Sending signal from slot %d, size: %d", id(signal_select_index), signal_data.size());
+            id(status_text).publish_state("Sending signal...");
+            auto transmit = id(ir_transmitter).transmit();
+            auto data = transmit.get_data();
+            data->set_carrier_frequency(38000);
+            for (int i = 0; i < signal_data.size(); i++) {
+              if (i % 2 == 0) {
+                data->mark(signal_data[i]);
+              } else {
+                data->space(signal_data[i]);
+              }
+            }
+            transmit.perform();
+            id(status_text).publish_state("Signal sent!");
+          } else {
+            ESP_LOGW("IR_SEND", "No signal stored in slot %d", id(signal_select_index));
+            id(status_text).publish_state("No signal in this slot");
+          }
 
 time:
   - platform: sntp
