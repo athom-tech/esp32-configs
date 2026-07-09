@@ -227,9 +227,10 @@ radio_frequency:
     remote_receiver_id: rf_receiver
 
 climate:
-  - platform: ${AC_Platform_name}
-    transmitter_id: ir_transmitter
+  - id: "AC"
     name: "AC"
+    platform: ${AC_Platform_name}
+    transmitter_id: ir_transmitter
     receiver_id: ir_receiver
 
 binary_sensor:
