@@ -5,7 +5,7 @@ substitutions:
   room: ""
   device_description: "athom bl0906 energy meter (6 channels)"
   project_name: "Athom Technology.Athom Energy Meter(6 Channels)"
-  project_version: "3.0.1"
+  project_version: "3.0.2"
   update_interval: 5s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
@@ -55,7 +55,7 @@ esphome:
   comment: "${device_description}"
   area: "${room}"
   name_add_mac_suffix: true
-  min_version: 2025.7.0
+  min_version: 2026.6.0
   project:
     name: "${project_name}"
     version: "${project_version}"
@@ -67,6 +67,14 @@ esp32:
   framework:
     type: esp-idf
     version: recommended
+    sdkconfig_options:
+      # @grigi found in testing that these options resulted in better responsiveness.
+      # BLE 4.2 is supported by ALL ESP32 boards that have bluetooth, the original and derivatives.
+      CONFIG_BT_BLE_42_FEATURES_SUPPORTED: y
+      # Also enable this on any derivative boards (S2, C3 etc) but not the original ESP32.
+      CONFIG_BT_BLE_50_FEATURES_SUPPORTED: y
+      # Extend the watchdog timeout, so the device reboots if the device appears locked up for over 10 seconds.
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "10"
 
 # esp32:
 #   board: esp32dev
@@ -81,9 +89,39 @@ preferences:
 
 api:
   # reboot_timeout: 0s
+  # Only enable BLE tracking when wifi is up and api is connected
+  # Gives single-core ESP32-C3 devices time to manage wifi and authenticate with api
+  on_client_connected:
+     - esp32_ble_tracker.start_scan:
+        continuous: true
+  # Disable BLE tracking when there are no api connections live
+  on_client_disconnected:
+    if:
+      condition:
+        not:
+          api.connected:
+      then:
+        - esp32_ble_tracker.stop_scan:
 
 ota:
   - platform: esphome
+  # Enables OTA firmware flashing from a URL (used by the update component below)
+  - platform: http_request
+
+# Required by the ota http_request platform and the update component.
+# verify_ssl: false skips TLS cert validation to reduce heap/RAM pressure during
+# the download; the manifest's MD5 still verifies firmware integrity before flashing.
+http_request:
+  verify_ssl: false
+
+update:
+  # Managed updates via HTTP request: periodically checks the published manifest
+  # and exposes a "Firmware Update" entity, pointing at this device's GitHub Pages
+  # manifest. Pages URLs avoid the redirect/buffer issues of Release download URLs.
+  - platform: http_request
+    name: "Firmware Update"
+    source: https://athom-tech.github.io/esp32-configs/firmware/athom-energy-monitor-x6.manifest.json
+    # update_interval defaults to 6h (how often it checks, not installs)
 
 logger:
   baud_rate: 115200
