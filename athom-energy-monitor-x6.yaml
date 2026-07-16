@@ -5,7 +5,7 @@ substitutions:
   room: ""
   device_description: "athom bl0906 energy meter (6 channels)"
   project_name: "Athom Technology.Athom Energy Meter(6 Channels)"
-  project_version: "3.0.2"
+  project_version: "3.0.3"
   update_interval: 5s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
@@ -148,6 +148,19 @@ improv_serial:
 
 esp32_improv:
   authorizer: none
+
+esp32_ble_tracker:
+  scan_parameters:
+    # Don't auto start BLE scanning, we control it in the `api` block's automation.
+    continuous: false
+    active: true  # send scan-request packets to gather more info, like device name for some devices.
+    interval: 320ms  # default 320ms - how long to spend on each advert channel
+    window:   300ms  # default 30ms - how long to actually "listen" in each interval. Reduce this if device is unstable.
+    # If the device cannot keep up or becomes unstable, reduce the "window" setting. This may be
+    # required if your device is controlling other sensors or doing PWM for lights etc.
+
+bluetooth_proxy:
+  active: true
 
 dashboard_import:
   package_import_url: github://athom-tech/esp32-configs/athom-energy-monitor-x6.yaml
