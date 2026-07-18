@@ -134,7 +134,7 @@ ota:
 # verify_ssl: false skips TLS cert validation to reduce heap/RAM pressure during
 # the download; the manifest's MD5 still verifies firmware integrity before flashing.
 http_request:
-  verify_ssl: true
+  verify_ssl: false
 
 update:
   # Managed updates via HTTP request: periodically checks the published manifest
