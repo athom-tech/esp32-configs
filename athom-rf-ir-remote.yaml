@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom RF IR Remote"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.0.4"
+  project_version: "v3.0.5"
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
   # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
@@ -84,6 +84,26 @@ globals:
     type: int
     restore_value: no
     initial_value: '10'
+  # RF433 learning mode flag (independent from IR learning)
+  - id: is_rf_learning_mode
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  # RF433 slot index, offset to 10-19 so it never collides with IR slots 0-9
+  - id: rf_signal_select_index
+    type: int
+    restore_value: yes
+    initial_value: '10'
+  # Temp holders for the rc_switch code/protocol to transmit; referenced by
+  # transmit_rc_switch_raw's !lambda during playback
+  - id: rf_tx_code
+    type: uint64_t
+    restore_value: no
+    initial_value: '0'
+  - id: rf_tx_protocol
+    type: int
+    restore_value: no
+    initial_value: '0'
 
 # Flash storage component for saving IR signals
 Flash_comp:
@@ -178,8 +198,26 @@ remote_receiver:
       number: ${RF_RX_PIN}
       inverted: true
     dump: rc_switch
-    tolerance: 25%
+    # RF433 fixed-code decoding: filter glitches, split frames on 4ms idle,
+    # and widen tolerance for cheap remotes. rc_switch decoding rejects the
+    # receiver's ambient noise, so learning no longer false-triggers.
+    filter: 4us
+    idle: 4ms
+    tolerance: 50%
     id: rf_receiver
+    on_rc_switch:
+      - lambda: |-
+          if (id(is_rf_learning_mode)) {
+            std::vector<int> d;
+            d.push_back((int) x.protocol);
+            d.push_back((int) (x.code >> 32));
+            d.push_back((int) (x.code & 0xFFFFFFFF));
+            id(signal_nvs).save_to_nvs(id(rf_signal_select_index), d);
+            ESP_LOGI("RF_LEARNING", "Learned protocol=%u code=%llu slot=%d",
+                     x.protocol, (unsigned long long) x.code, id(rf_signal_select_index));
+            id(is_rf_learning_mode) = false;
+            id(rf_status_text).publish_state("Signal learned!");
+          }
 
   - pin:
       number: ${IR_RX_PIN}
@@ -335,6 +373,34 @@ button:
           ESP_LOGI("IR_LEARNING", "Cleared slot %d", id(signal_select_index));
           id(status_text).publish_state("Slot cleared");
 
+  # RF433 learning button
+  - platform: template
+    name: "RF Learn"
+    icon: mdi:remote
+    on_press:
+      - lambda: |-
+          id(is_rf_learning_mode) = true;
+          ESP_LOGI("RF_LEARNING", "Learning mode activated for slot %d", id(rf_signal_select_index));
+          id(rf_status_text).publish_state("Ready to learn...");
+
+  # RF433 send button
+  - platform: template
+    name: "RF Send"
+    icon: mdi:send
+    on_press:
+      - script.execute: send_raw_rf_signal
+
+  # Clear the RF signal in the current slot
+  - platform: template
+    name: "RF Clear Slot"
+    icon: mdi:delete
+    on_press:
+      - lambda: |-
+          std::vector<int> empty_signal;
+          id(signal_nvs).save_to_nvs(id(rf_signal_select_index), empty_signal);
+          ESP_LOGI("RF_LEARNING", "Cleared slot %d", id(rf_signal_select_index));
+          id(rf_status_text).publish_state("Slot cleared");
+
 light:
   - platform: status_led
     name: "Status LED"
@@ -366,6 +432,12 @@ text_sensor:
   - platform: template
     name: "IR Learning Status"
     id: status_text
+    icon: mdi:information
+
+  # RF433 learning status display
+  - platform: template
+    name: "RF Learning Status"
+    id: rf_status_text
     icon: mdi:information
 
 # Signal slot selector
@@ -400,6 +472,37 @@ select:
           else if (x == "Signal 9") id(signal_select_index) = 9;
           ESP_LOGI("IR_LEARNING", "Selected slot: %d", id(signal_select_index));
 
+  # RF433 signal slot selector (mapped to NVS index 10-19 to avoid IR collision)
+  - platform: template
+    name: "RF Signal Slot"
+    id: rf_signal_slot_select
+    optimistic: true
+    options:
+      - "Signal 0"
+      - "Signal 1"
+      - "Signal 2"
+      - "Signal 3"
+      - "Signal 4"
+      - "Signal 5"
+      - "Signal 6"
+      - "Signal 7"
+      - "Signal 8"
+      - "Signal 9"
+    initial_option: "Signal 0"
+    on_value:
+      - lambda: |-
+          if (x == "Signal 0") id(rf_signal_select_index) = 10;
+          else if (x == "Signal 1") id(rf_signal_select_index) = 11;
+          else if (x == "Signal 2") id(rf_signal_select_index) = 12;
+          else if (x == "Signal 3") id(rf_signal_select_index) = 13;
+          else if (x == "Signal 4") id(rf_signal_select_index) = 14;
+          else if (x == "Signal 5") id(rf_signal_select_index) = 15;
+          else if (x == "Signal 6") id(rf_signal_select_index) = 16;
+          else if (x == "Signal 7") id(rf_signal_select_index) = 17;
+          else if (x == "Signal 8") id(rf_signal_select_index) = 18;
+          else if (x == "Signal 9") id(rf_signal_select_index) = 19;
+          ESP_LOGI("RF_LEARNING", "Selected slot: %d", id(rf_signal_select_index));
+
 # Script for sending raw IR signals
 script:
   - id: send_raw_signal
@@ -425,6 +528,47 @@ script:
             ESP_LOGW("IR_SEND", "No signal stored in slot %d", id(signal_select_index));
             id(status_text).publish_state("No signal in this slot");
           }
+
+  # Script for sending learned RF433 rc_switch signals
+  - id: send_raw_rf_signal
+    then:
+      # Load [protocol, code_high, code_low] from NVS and rebuild the 64-bit code
+      # into the temp globals that transmit_rc_switch_raw reads via !lambda.
+      - lambda: |-
+          std::vector<int> d = id(signal_nvs).load_from_nvs<int>(id(rf_signal_select_index));
+          if (d.size() >= 3) {
+            id(rf_tx_protocol) = d[0];
+            id(rf_tx_code) = ((uint64_t) (uint32_t) d[1] << 32) | (uint32_t) d[2];
+            ESP_LOGI("RF_SEND", "Sending protocol=%d code=%llu slot=%d",
+                     id(rf_tx_protocol), (unsigned long long) id(rf_tx_code), id(rf_signal_select_index));
+            id(rf_status_text).publish_state("Sending signal...");
+          } else {
+            id(rf_tx_protocol) = 0;
+            ESP_LOGW("RF_SEND", "No signal stored in slot %d", id(rf_signal_select_index));
+            id(rf_status_text).publish_state("No signal in this slot");
+          }
+      - if:
+          condition:
+            lambda: 'return id(rf_tx_protocol) > 0;'
+          then:
+            - remote_transmitter.transmit_rc_switch_raw:
+                # protocol must be an RCSwitchBase: index the built-in table (1..8)
+                protocol: !lambda 'return esphome::remote_base::RC_SWITCH_PROTOCOLS[id(rf_tx_protocol)];'
+                # code must be an MSB-first binary string; its length is the bit count.
+                # on_rc_switch does not expose the received bit length, and virtually
+                # all 433MHz fixed-code remotes (EV1527/PT2262/…) are 24-bit.
+                code: !lambda |-
+                  uint64_t code = id(rf_tx_code);
+                  const int nbits = 24;
+                  std::string s;
+                  for (int i = nbits - 1; i >= 0; i--)
+                    s += (code & ((uint64_t) 1 << i)) ? '1' : '0';
+                  return s;
+                transmitter_id: rf_transmitter
+                repeat:
+                  times: 5
+                  wait_time: 0us
+            - lambda: 'id(rf_status_text).publish_state("Signal sent!");'
 
 time:
   - platform: sntp
