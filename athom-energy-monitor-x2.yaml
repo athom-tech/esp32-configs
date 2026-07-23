@@ -85,8 +85,10 @@ api:
 
 ota:
   - platform: esphome
+    id: ota_esphome
   # Enables OTA firmware flashing from a URL (used by the update component below)
   - platform: http_request
+    id: ota_http_request
 
 # Required by the ota http_request platform and the update component.
 # verify_ssl: false skips TLS cert validation to reduce heap/RAM pressure during
