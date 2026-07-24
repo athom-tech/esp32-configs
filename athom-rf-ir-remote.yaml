@@ -89,7 +89,7 @@ globals:
     type: bool
     restore_value: no
     initial_value: 'false'
-  # RF433 slot index, offset to 10-19 so it never collides with IR slots 0-9
+  # RF433 slot index, offset to 10-25 so it never collides with IR slots 0-9
   - id: rf_signal_select_index
     type: int
     restore_value: yes
@@ -492,6 +492,12 @@ select:
       - "Signal 7"
       - "Signal 8"
       - "Signal 9"
+      - "Signal 10"
+      - "Signal 11"
+      - "Signal 12"
+      - "Signal 13"
+      - "Signal 14"
+      - "Signal 15"
     initial_option: "Signal 0"
     on_value:
       - lambda: |-
@@ -505,6 +511,12 @@ select:
           else if (x == "Signal 7") id(rf_signal_select_index) = 17;
           else if (x == "Signal 8") id(rf_signal_select_index) = 18;
           else if (x == "Signal 9") id(rf_signal_select_index) = 19;
+          else if (x == "Signal 10") id(rf_signal_select_index) = 20;
+          else if (x == "Signal 11") id(rf_signal_select_index) = 21;
+          else if (x == "Signal 12") id(rf_signal_select_index) = 22;
+          else if (x == "Signal 13") id(rf_signal_select_index) = 23;
+          else if (x == "Signal 14") id(rf_signal_select_index) = 24;
+          else if (x == "Signal 15") id(rf_signal_select_index) = 25;
           ESP_LOGI("RF_LEARNING", "Selected slot: %d", id(rf_signal_select_index));
 
 # Script for sending raw IR signals
