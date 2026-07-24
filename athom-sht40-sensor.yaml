@@ -5,7 +5,7 @@ substitutions:
   room: ""
   device_description: "athom sht40 temperature and humidity sensor"
   project_name: "China Athom Technology.Temperature Humidity Sensor"
-  project_version: "1.0.8"
+  project_version: "1.0.9"
   update_interval: 5s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
@@ -102,6 +102,7 @@ ota:
 # verify_ssl: false skips TLS cert validation to reduce heap/RAM pressure during
 # the download; the manifest's MD5 still verifies firmware integrity before flashing.
 http_request:
+  id: http_request_component
   verify_ssl: false
 
 update:
@@ -109,6 +110,7 @@ update:
   # and exposes a "Firmware Update" entity, pointing at this device's GitHub Pages
   # manifest. Pages URLs avoid the redirect/buffer issues of Release download URLs.
   - platform: http_request
+    id: update_http_request
     name: "Firmware Update"
     source: https://athom-tech.github.io/esp32-configs/firmware/athom-sht40-sensor.manifest.json
     # update_interval defaults to 6h (how often it checks, not installs)

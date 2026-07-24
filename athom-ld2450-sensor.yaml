@@ -4,7 +4,7 @@ substitutions:
   room: ""
   device_description: "athom esp32c3 ld2450 motion target tracking sensor"
   project_name: "China Athom Technology.PS02C3MZ LD2450"
-  project_version: "v2.0.5"
+  project_version: "v2.0.6"
   update_interval: 60s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ""
@@ -75,6 +75,7 @@ ota:
 # verify_ssl: false skips TLS cert validation to reduce heap/RAM pressure during
 # the download; the manifest's MD5 still verifies firmware integrity before flashing.
 http_request:
+  id: http_request_component
   verify_ssl: false
 
 update:
@@ -82,6 +83,7 @@ update:
   # and exposes a "Firmware Update" entity, pointing at this device's GitHub Pages
   # manifest. Pages URLs avoid the redirect/buffer issues of Release download URLs.
   - platform: http_request
+    id: update_http_request
     name: "Firmware Update"
     source: https://athom-tech.github.io/esp32-configs/firmware/athom-ld2450-sensor.manifest.json
     # update_interval defaults to 6h (how often it checks, not installs)
