@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom Wall Outlet V3"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.0.2"
+  project_version: "v3.0.3"
   # Restore the relay (GPO switch) upon reboot to state:
   relay_restore_mode: RESTORE_DEFAULT_OFF
   # Set the update interval for sensors
@@ -114,13 +114,16 @@ api:
 
 ota:
   - platform: esphome
+    id: ota_esphome
   # Enables OTA firmware flashing from a URL (used by the update component below)
   - platform: http_request
+    id: ota_http_request
 
 # Required by the ota http_request platform and the update component.
 # verify_ssl: false skips TLS cert validation to reduce heap/RAM pressure during
 # the download; the manifest's MD5 still verifies firmware integrity before flashing.
 http_request:
+  id: http_request_component
   verify_ssl: false
 
 update:
@@ -128,6 +131,7 @@ update:
   # and exposes a "Firmware Update" entity, pointing at this device's GitHub Pages
   # manifest. Pages URLs avoid the redirect/buffer issues of Release download URLs.
   - platform: http_request
+    id: update_http_request
     name: "Firmware Update"
     source: https://athom-tech.github.io/esp32-configs/firmware/athom-wall-outlet-v3.manifest.json
     # update_interval defaults to 6h (how often it checks, not installs)
