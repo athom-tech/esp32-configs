@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom 12W RGBCW Bulb"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.1.6"
+  project_version: "v3.1.7"
    # Restore the light (GPO switch) upon reboot to state:
   light_restore_mode: RESTORE_DEFAULT_ON
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
@@ -77,6 +77,11 @@ globals:
     restore_value: yes
     initial_value: "false"
 
+  - id: espnow_enabled
+    type: bool
+    restore_value: yes
+    initial_value: "true"
+
 select:
   - platform: template
     name: "Power On State"
@@ -134,24 +139,48 @@ esphome:
       then:
         - if:
             condition:
-              lambda: 'return id(remote_paired);'
+              lambda: 'return id(espnow_enabled);'
             then:
-              - espnow.peer.add:
-                  id: espnow_component
-                  address: !lambda |-
-                    return id(remote_mac);
-              - lambda: |-
-                  char mac[18];
-                  snprintf(mac, sizeof(mac), "%02X:%02X:%02X:%02X:%02X:%02X",
-                           id(remote_mac)[0], id(remote_mac)[1],
-                           id(remote_mac)[2], id(remote_mac)[3],
-                           id(remote_mac)[4], id(remote_mac)[5]);
-                  id(remote_paired_text).publish_state(mac);
-                  id(remote_pairing_status).publish_state("Paired");
+              # ESP-NOW is configured with enable_on_boot: false so that the saved
+              # switch state decides whether the stack comes up at all. enable()
+              # must run before any peer.add - add_peer() returns ESP_ERR_ESPNOW_NOT_INIT
+              # while the component is disabled.
+              - lambda: 'id(espnow_component)->enable();'
+              - if:
+                  condition:
+                    lambda: 'return id(remote_paired);'
+                  then:
+                    - espnow.peer.add:
+                        id: espnow_component
+                        address: !lambda |-
+                          return id(remote_mac);
+                    - lambda: |-
+                        char mac[18];
+                        snprintf(mac, sizeof(mac), "%02X:%02X:%02X:%02X:%02X:%02X",
+                                 id(remote_mac)[0], id(remote_mac)[1],
+                                 id(remote_mac)[2], id(remote_mac)[3],
+                                 id(remote_mac)[4], id(remote_mac)[5]);
+                        id(remote_paired_text).publish_state(mac);
+                        id(remote_pairing_status).publish_state("Paired");
+                  else:
+                    - lambda: |-
+                        id(remote_paired_text).publish_state("None");
+                        id(remote_pairing_status).publish_state("Idle");
             else:
+              # ESP-NOW switched off: leave the stack down, but still surface the
+              # retained pairing so the user can see it is remembered.
               - lambda: |-
-                  id(remote_paired_text).publish_state("None");
-                  id(remote_pairing_status).publish_state("Idle");
+                  if (id(remote_paired)) {
+                    char mac[18];
+                    snprintf(mac, sizeof(mac), "%02X:%02X:%02X:%02X:%02X:%02X",
+                             id(remote_mac)[0], id(remote_mac)[1],
+                             id(remote_mac)[2], id(remote_mac)[3],
+                             id(remote_mac)[4], id(remote_mac)[5]);
+                    id(remote_paired_text).publish_state(mac);
+                  } else {
+                    id(remote_paired_text).publish_state("None");
+                  }
+                  id(remote_pairing_status).publish_state("Disabled");
         - if:
             condition:
               and:
@@ -255,7 +284,9 @@ esp32_improv:
 espnow:
   id: espnow_component
   auto_add_peer: false
-  enable_on_boot: true
+  # Startup is driven by the "ESP-NOW" switch via the on_boot automation above,
+  # so the stack is never brought up only to be torn down again.
+  enable_on_boot: false
   on_unknown_peer:
     - lambda: |-
         const char *const TAG = "espnow_remote";
@@ -410,6 +441,53 @@ switch:
       - esp32_ble_tracker.stop_scan:
       - lambda: 'ESP_LOGI("bluetooth_proxy_switch", "Bluetooth proxy scanning disabled");'
 
+  - platform: template
+    name: "ESP-NOW"
+    id: espnow_switch
+    icon: mdi:remote
+    entity_category: config
+    restore_mode: DISABLED
+    lambda: 'return id(espnow_enabled);'
+    turn_on_action:
+      - globals.set:
+          id: espnow_enabled
+          value: "true"
+      # enable() first: add_peer() is rejected with ESP_ERR_ESPNOW_NOT_INIT while disabled.
+      - lambda: 'id(espnow_component)->enable();'
+      - if:
+          condition:
+            lambda: 'return id(remote_paired);'
+          then:
+            - espnow.peer.add:
+                id: espnow_component
+                address: !lambda |-
+                  return id(remote_mac);
+            - lambda: 'id(remote_pairing_status).publish_state("Paired");'
+          else:
+            - lambda: 'id(remote_pairing_status).publish_state("Idle");'
+      - lambda: 'ESP_LOGI("espnow_remote", "ESP-NOW enabled");'
+    turn_off_action:
+      - globals.set:
+          id: espnow_enabled
+          value: "false"
+      # Close any open pairing window so it cannot fire once ESP-NOW comes back.
+      - lambda: 'id(remote_pairing) = false;'
+      # Drop the peer while the stack is still up (del_peer() is rejected once disabled).
+      # The pairing itself lives in remote_mac/remote_paired and is retained, so turning
+      # the switch back on re-adds the same remote without re-pairing.
+      - if:
+          condition:
+            lambda: 'return id(remote_paired);'
+          then:
+            - espnow.peer.delete:
+                id: espnow_component
+                address: !lambda |-
+                  return id(remote_mac);
+      - lambda: |-
+          id(espnow_component)->disable();
+          id(remote_pairing_status).publish_state("Disabled");
+          ESP_LOGI("espnow_remote", "ESP-NOW disabled");
+
 binary_sensor:
   - platform: status
     name: "Status"
@@ -468,12 +546,20 @@ button:
     entity_category: config
     on_press:
       then:
-        - lambda: |-
-            id(remote_pairing) = true;
-            id(remote_pair_deadline) = millis() + 60000;
-            id(remote_pairing_status).publish_state("Pairing for 60 seconds");
-            ESP_LOGI("espnow_remote", "Pairing enabled for 60 seconds; press a ESP-NOW remote button");
-        - script.execute: remote_pairing_timeout
+        - if:
+            condition:
+              lambda: 'return !id(espnow_enabled);'
+            then:
+              - lambda: |-
+                  id(remote_pairing_status).publish_state("Disabled");
+                  ESP_LOGW("espnow_remote", "ESP-NOW is disabled; turn on the ESP-NOW switch before pairing");
+            else:
+              - lambda: |-
+                  id(remote_pairing) = true;
+                  id(remote_pair_deadline) = millis() + 60000;
+                  id(remote_pairing_status).publish_state("Pairing for 60 seconds");
+                  ESP_LOGI("espnow_remote", "Pairing enabled for 60 seconds; press a ESP-NOW remote button");
+              - script.execute: remote_pairing_timeout
 
   - platform: template
     name: "Clear ESP-NOW Remote"
@@ -483,20 +569,28 @@ button:
       then:
         - if:
             condition:
-              lambda: 'return id(remote_paired);'
+              lambda: 'return !id(espnow_enabled);'
             then:
-              - espnow.peer.delete:
-                  id: espnow_component
-                  address: !lambda |-
-                    return id(remote_mac);
-        - lambda: |-
-            id(remote_mac) = std::array<uint8_t, 6>{0, 0, 0, 0, 0, 0};
-            id(remote_paired) = false;
-            id(remote_pairing) = false;
-            id(remote_last_seq) = 0xFFFFFFFF;
-            id(remote_paired_text).publish_state("None");
-            id(remote_pairing_status).publish_state("Idle");
-            ESP_LOGI("espnow_remote", "Cleared paired ESP-NOW remote");
+              - lambda: |-
+                  id(remote_pairing_status).publish_state("Disabled");
+                  ESP_LOGW("espnow_remote", "ESP-NOW is disabled; turn on the ESP-NOW switch before clearing the remote");
+            else:
+              - if:
+                  condition:
+                    lambda: 'return id(remote_paired);'
+                  then:
+                    - espnow.peer.delete:
+                        id: espnow_component
+                        address: !lambda |-
+                          return id(remote_mac);
+              - lambda: |-
+                  id(remote_mac) = std::array<uint8_t, 6>{0, 0, 0, 0, 0, 0};
+                  id(remote_paired) = false;
+                  id(remote_pairing) = false;
+                  id(remote_last_seq) = 0xFFFFFFFF;
+                  id(remote_paired_text).publish_state("None");
+                  id(remote_pairing_status).publish_state("Idle");
+                  ESP_LOGI("espnow_remote", "Cleared paired ESP-NOW remote");
 
 output:
   - platform: ledc
@@ -522,13 +616,13 @@ output:
     frequency: 9765
     pin: GPIO3
     min_power: 0
-    max_power: 0.9
+    max_power: 0.95
   - platform: ledc
     id: warm_white_output
     frequency: 9765
     pin: GPIO4
     min_power: 0
-    max_power: 0.9
+    max_power: 0.95
 
 light:
   - platform: rgbww
