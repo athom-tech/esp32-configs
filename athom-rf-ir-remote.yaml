@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom RF IR Remote"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.1.0"
+  project_version: "v3.2.0"
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
   # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
@@ -104,6 +104,12 @@ globals:
     type: int
     restore_value: no
     initial_value: '0'
+  # Scratch waveform for A-OK playback; transmit_raw's code lambda must return
+  # std::vector<int32_t>, so the global matches that type exactly
+  - id: rf_aok_buf
+    type: std::vector<int32_t>
+    restore_value: no
+    initial_value: 'std::vector<int32_t>()'
 
 # Flash storage component for saving IR signals
 Flash_comp:
@@ -217,12 +223,49 @@ remote_receiver:
     # Slot storage format: [type, code_hi, code_lo].
     #   type  1..8 -> rc_switch protocol number (the original format, unchanged)
     #   type  -1   -> Dooya, code packs the decoded fields (see on_dooya)
+    #   type  -2   -> A-OK, code is the 64-bit frame content
     # A negative type can never collide with an rc_switch protocol, so slots
     # learned by older firmware keep playing, and older firmware refuses newer
     # slots safely (its playback requires protocol > 0).
     on_rc_switch:
       - lambda: |-
           if (id(is_rf_learning_mode)) {
+            // A-OK covers/awnings (reverse-engineered in
+            // github.com/akirjavainen/A-OK): 65-bit frames of
+            // [start 0xA3][24-bit ID][16-bit address][8-bit cmd][8-bit
+            // checksum][constant 1]. rc_switch protocol 6 is the same
+            // pulse-distance scheme, so it decodes the first 64 bits
+            // correctly; the constant trailing 1 never reaches the code.
+            // rc_switch cannot report a bit count, but the checksum only
+            // validates if all 64 bits arrived, so a passing checksum is
+            // both the completeness check and the protocol identification:
+            // shorter codes (EV1527 etc.) have a zero top byte, never 0xA3.
+            if (x.protocol == 6) {
+              uint8_t b[8];
+              for (int i = 0; i < 8; i++) b[i] = (uint8_t) (x.code >> (56 - 8 * i));
+              uint8_t cks = (uint8_t) ((b[1] + b[2] + b[3] + b[4] + b[5] + b[6]) & 0xFF);
+              if (b[0] == 0xA3 && cks == b[7]) {
+                // The remote follows every UP/DOWN with an "after up/down"
+                // burst (cmd 0x24). Storing that instead of the button's real
+                // command would be useless, so skip it and keep listening -
+                // the real command was already stored from the first burst,
+                // or will arrive on the next press.
+                if (b[6] == 0x24) {
+                  ESP_LOGD("RF_LEARNING", "Ignoring A-OK follow-up frame (cmd 0x24)");
+                  return;
+                }
+                std::vector<int> d;
+                d.push_back(-2);
+                d.push_back((int) (x.code >> 32));
+                d.push_back((int) (x.code & 0xFFFFFFFF));
+                id(signal_nvs).save_to_nvs(id(rf_signal_select_index), d);
+                ESP_LOGI("RF_LEARNING", "Learned A-OK id=0x%02X%02X%02X address=0x%02X%02X cmd=0x%02X slot=%d",
+                         b[1], b[2], b[3], b[4], b[5], b[6], id(rf_signal_select_index));
+                id(is_rf_learning_mode) = false;
+                id(rf_status_text).publish_state("A-OK signal learned!");
+                return;
+              }
+            }
             std::vector<int> d;
             d.push_back((int) x.protocol);
             d.push_back((int) (x.code >> 32));
@@ -633,12 +676,41 @@ script:
             id(status_text).publish_state("No signal in this slot");
           }
 
+  # Transmits the A-OK frame currently in rf_tx_code, following
+  # github.com/akirjavainen/A-OK exactly: AGC 5300us HIGH + 530us LOW, then 65
+  # bits (bit 0 = 270us HIGH + 565us LOW, bit 1 = 565us HIGH + 270us LOW; the
+  # 65th bit is a constant 1), then 5030us of radio silence, the whole command
+  # repeated 8 times. The stored code holds the first 64 bits; the constant
+  # trailing 1 is appended here, and its LOW half merges into the silence.
+  - id: aok_send
+    then:
+      - lambda: |-
+          uint64_t code = id(rf_tx_code);
+          std::vector<int32_t> w;
+          w.reserve(2 + 2 * 65);
+          w.push_back(5300);
+          w.push_back(-530);
+          for (int i = 63; i >= 0; i--) {
+            if ((code >> i) & 1) { w.push_back(565); w.push_back(-270); }
+            else                 { w.push_back(270); w.push_back(-565); }
+          }
+          w.push_back(565);
+          w.push_back(-(270 + 5030));
+          id(rf_aok_buf) = w;
+      - remote_transmitter.transmit_raw:
+          transmitter_id: rf_transmitter
+          carrier_frequency: 0Hz
+          code: !lambda 'return id(rf_aok_buf);'
+          repeat:
+            times: 8
+            wait_time: 0us
+
   # Script for sending learned RF433 signals
   - id: send_raw_rf_signal
     then:
       # Load [type, code_high, code_low] from NVS and rebuild the 64-bit code
       # into the temp globals that the transmit branches read via !lambda.
-      # type > 0 is an rc_switch protocol number; type -1 is Dooya.
+      # type > 0 is an rc_switch protocol number; type -1 is Dooya; -2 is A-OK.
       - lambda: |-
           std::vector<int> d = id(signal_nvs).load_from_nvs<int>(id(rf_signal_select_index));
           if (d.size() >= 3) {
@@ -668,6 +740,34 @@ script:
                 repeat:
                   times: 8
                   wait_time: 7755us
+            - lambda: 'id(rf_status_text).publish_state("Signal sent!");'
+      # A-OK playback. After an UP or DOWN, the real remote transmits a second
+      # burst with cmd 0x24 ("after up/down" in akirjavainen/A-OK), so playback
+      # reproduces that: same ID and address, cmd 0x24, checksum recomputed.
+      # STOP and everything else is a single burst, exactly like the remote.
+      - if:
+          condition:
+            lambda: 'return id(rf_tx_protocol) == -2;'
+          then:
+            - script.execute: aok_send
+            - script.wait: aok_send
+            - if:
+                condition:
+                  lambda: |-
+                    uint8_t cmd = (uint8_t) (id(rf_tx_code) >> 8);
+                    return cmd == 0x0B || cmd == 0x43;
+                then:
+                  - lambda: |-
+                      uint64_t code = id(rf_tx_code);
+                      uint8_t b[8];
+                      for (int i = 0; i < 8; i++) b[i] = (uint8_t) (code >> (56 - 8 * i));
+                      b[6] = 0x24;
+                      b[7] = (uint8_t) ((b[1] + b[2] + b[3] + b[4] + b[5] + b[6]) & 0xFF);
+                      uint64_t fu = 0;
+                      for (int i = 0; i < 8; i++) fu = (fu << 8) | b[i];
+                      id(rf_tx_code) = fu;
+                  - script.execute: aok_send
+                  - script.wait: aok_send
             - lambda: 'id(rf_status_text).publish_state("Signal sent!");'
       - if:
           condition:
