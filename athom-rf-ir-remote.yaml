@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom RF IR Remote"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.0.6"
+  project_version: "v3.1.0"
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
   # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
@@ -201,7 +201,12 @@ remote_receiver:
   - pin:
       number: ${RF_RX_PIN}
       inverted: true
-    dump: rc_switch
+    # dooya is dumped alongside rc_switch so that a Dooya remote press is
+    # visible in the log as [remote.dooya] lines even outside learning mode -
+    # if a press decodes but learning misses it, the two can be told apart.
+    dump:
+      - rc_switch
+      - dooya
     # RF433 fixed-code decoding: filter glitches, split frames on 4ms idle,
     # and widen tolerance for cheap remotes. rc_switch decoding rejects the
     # receiver's ambient noise, so learning no longer false-triggers.
@@ -209,6 +214,12 @@ remote_receiver:
     idle: 4ms
     tolerance: 50%
     id: rf_receiver
+    # Slot storage format: [type, code_hi, code_lo].
+    #   type  1..8 -> rc_switch protocol number (the original format, unchanged)
+    #   type  -1   -> Dooya, code packs the decoded fields (see on_dooya)
+    # A negative type can never collide with an rc_switch protocol, so slots
+    # learned by older firmware keep playing, and older firmware refuses newer
+    # slots safely (its playback requires protocol > 0).
     on_rc_switch:
       - lambda: |-
           if (id(is_rf_learning_mode)) {
@@ -221,6 +232,83 @@ remote_receiver:
                      x.protocol, (unsigned long long) x.code, id(rf_signal_select_index));
             id(is_rf_learning_mode) = false;
             id(rf_status_text).publish_state("Signal learned!");
+          }
+    # Dooya learning from raw timings. On this board the receiver's captures
+    # are sign-flipped and start at the ~1500us header SPACE - the 5000us
+    # header mark is swallowed as pre-capture idle - so ESPHome's on_dooya
+    # decoder (which demands the 5000/1500 header as its first item) can never
+    # match. This is also why A-OK remotes decode only via rc_switch protocol
+    # 6, the table's single inverted entry. Rather than flipping the pin's
+    # inverted flag (which would break protocol-6 A-OK learning and every
+    # already-learned rc_switch slot), Dooya is decoded here from magnitudes
+    # alone: strip header items >= 1400us, require the 79 or 80 symbols of a
+    # 40-bit frame, and read bits as (long,short)=1 / (short,long)=0.
+    on_raw:
+      - lambda: |-
+          if (!id(is_rf_learning_mode))
+            return;
+          std::vector<int> body;
+          body.reserve(80);
+          for (int32_t v : x) {
+            int m = v < 0 ? -v : v;
+            if (m >= 1400) continue;      // header space / inter-frame gap
+            if (m < 150) return;          // glitch: not a clean frame
+            body.push_back(m);
+          }
+          if (body.size() != 79 && body.size() != 80)
+            return;
+          // Classify short (~350us) vs long (~750us); reject anything that
+          // sits ambiguously between the two grids.
+          uint64_t bits = 0;
+          int nbits = 0;
+          for (size_t i = 0; i + 1 < body.size(); i += 2) {
+            bool a_long = body[i] > 540, b_long = body[i + 1] > 540;
+            if (a_long == b_long) return; // not a valid Dooya symbol pair
+            bits = (bits << 1) | (a_long ? 1 : 0);
+            nbits++;
+          }
+          if (body.size() == 79) {
+            // The final bit's space merged into the gap; its mark alone
+            // determines the value.
+            bits = (bits << 1) | (body[78] > 540 ? 1 : 0);
+            nbits++;
+          }
+          if (nbits != 40)
+            return;
+          uint32_t d_id = (uint32_t) ((bits >> 16) & 0xFFFFFF);
+          uint8_t d_ch = (uint8_t) ((bits >> 8) & 0xFF);
+          uint8_t d_btn = (uint8_t) ((bits >> 4) & 0xF);
+          uint8_t d_chk = (uint8_t) (bits & 0xF);
+          std::vector<int> d;
+          d.push_back(-1);
+          d.push_back((int) (bits >> 32));
+          d.push_back((int) (bits & 0xFFFFFFFF));
+          id(signal_nvs).save_to_nvs(id(rf_signal_select_index), d);
+          ESP_LOGI("RF_LEARNING", "Learned Dooya id=0x%06X channel=%d button=%d check=%d slot=%d",
+                   (unsigned int) d_id, (int) d_ch, (int) d_btn, (int) d_chk,
+                   id(rf_signal_select_index));
+          id(is_rf_learning_mode) = false;
+          id(rf_status_text).publish_state("Dooya signal learned!");
+    # Kept for boards whose receiver polarity lets ESPHome's own decoder see
+    # the full header; on this hardware it never fires (see on_raw above).
+    # Harmless overlap: whichever path stores first clears the learning flag.
+    on_dooya:
+      - lambda: |-
+          if (id(is_rf_learning_mode)) {
+            uint64_t code = ((uint64_t) x.id << 16) |
+                            ((uint64_t) (uint8_t) x.channel << 8) |
+                            ((uint64_t) (x.button & 0xF) << 4) |
+                            (uint64_t) (x.check & 0xF);
+            std::vector<int> d;
+            d.push_back(-1);
+            d.push_back((int) (code >> 32));
+            d.push_back((int) (code & 0xFFFFFFFF));
+            id(signal_nvs).save_to_nvs(id(rf_signal_select_index), d);
+            ESP_LOGI("RF_LEARNING", "Learned Dooya id=0x%06X channel=%d button=%d check=%d slot=%d",
+                     (unsigned int) x.id, (int) x.channel, (int) x.button, (int) x.check,
+                     id(rf_signal_select_index));
+            id(is_rf_learning_mode) = false;
+            id(rf_status_text).publish_state("Dooya signal learned!");
           }
 
   - pin:
@@ -545,17 +633,18 @@ script:
             id(status_text).publish_state("No signal in this slot");
           }
 
-  # Script for sending learned RF433 rc_switch signals
+  # Script for sending learned RF433 signals
   - id: send_raw_rf_signal
     then:
-      # Load [protocol, code_high, code_low] from NVS and rebuild the 64-bit code
-      # into the temp globals that transmit_rc_switch_raw reads via !lambda.
+      # Load [type, code_high, code_low] from NVS and rebuild the 64-bit code
+      # into the temp globals that the transmit branches read via !lambda.
+      # type > 0 is an rc_switch protocol number; type -1 is Dooya.
       - lambda: |-
           std::vector<int> d = id(signal_nvs).load_from_nvs<int>(id(rf_signal_select_index));
           if (d.size() >= 3) {
             id(rf_tx_protocol) = d[0];
             id(rf_tx_code) = ((uint64_t) (uint32_t) d[1] << 32) | (uint32_t) d[2];
-            ESP_LOGI("RF_SEND", "Sending protocol=%d code=%llu slot=%d",
+            ESP_LOGI("RF_SEND", "Sending type=%d code=%llu slot=%d",
                      id(rf_tx_protocol), (unsigned long long) id(rf_tx_code), id(rf_signal_select_index));
             id(rf_status_text).publish_state("Sending signal...");
           } else {
@@ -563,6 +652,23 @@ script:
             ESP_LOGW("RF_SEND", "No signal stored in slot %d", id(rf_signal_select_index));
             id(rf_status_text).publish_state("No signal in this slot");
           }
+      # Dooya playback through ESPHome's own encoder, from the stored fields.
+      # repeat 8 x 7755us matches what real Dooya remotes transmit; a single
+      # frame is not accepted by the motors.
+      - if:
+          condition:
+            lambda: 'return id(rf_tx_protocol) == -1;'
+          then:
+            - remote_transmitter.transmit_dooya:
+                transmitter_id: rf_transmitter
+                id: !lambda 'return (uint32_t) ((id(rf_tx_code) >> 16) & 0xFFFFFF);'
+                channel: !lambda 'return (uint8_t) ((id(rf_tx_code) >> 8) & 0xFF);'
+                button: !lambda 'return (uint8_t) ((id(rf_tx_code) >> 4) & 0xF);'
+                check: !lambda 'return (uint8_t) (id(rf_tx_code) & 0xF);'
+                repeat:
+                  times: 8
+                  wait_time: 7755us
+            - lambda: 'id(rf_status_text).publish_state("Signal sent!");'
       - if:
           condition:
             lambda: 'return id(rf_tx_protocol) > 0;'
