@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: China Athom Technology.Athom Dual Plug V3
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: v3.0.2
+  project_version: v3.0.3
   # Restore the relay (GPO switch) upon reboot to state:
   relay1_restore_mode: RESTORE_DEFAULT_ON
   relay2_restore_mode: RESTORE_DEFAULT_ON
@@ -31,9 +31,7 @@ substitutions:
   # Enables faster network connections, with last connected SSID being connected to and no full scan for SSID being undertaken
   wifi_fast_connect: "false"
   # Define logging level: NONE, ERROR, WARN, INFO, DEBUG (Default), VERBOSE, VERY_VERBOSE
-  log_level: "INFO"
-  # Hide the ENERGY sensor that shows kWh consumed, but with no time period associated with it. Resets when device restarted and reflashed.
-  hide_energy_sensor: "true"
+  log_level: "DEBUG"
   # Enable or disable the use of IPv6 networking on the device
   ipv6_enable: "false"
   # Power plug icon selection. Change to reflect the type/country of powr plug in use, this will update the power plug icon shown next to the switch
@@ -291,12 +289,14 @@ sensor:
       name: 'Voltage'
     current_1:
       name: 'Current 1'
+      id: current_1
       on_value_range:
         - above: ${current_limit}
           then:
             - switch.turn_off: relay1
     current_2:
       name: 'Current 2'
+      id: current_2
       on_value_range:
         - above: ${current_limit}
           then:
@@ -315,6 +315,34 @@ sensor:
       id: energy_2
     energy_total:
       name: 'Energy Total'
+      id: energy_total
+
+  - platform: template
+    name: "Total Current"
+    id: total_current
+    unit_of_measurement: "A"
+    device_class: current
+    state_class: measurement
+    accuracy_decimals: 2
+    lambda: |-
+      return id(current_1).state + id(current_2).state;
+    update_interval: ${sensor_update_interval}
+    on_value_range:
+        - above: ${current_limit}
+          then:
+            - switch.turn_off: relay1
+            - switch.turn_off: relay2
+
+  - platform: template
+    name: "Total Active Power"
+    id: total_active_power
+    unit_of_measurement: "W"
+    device_class: power
+    state_class: measurement
+    accuracy_decimals: 1
+    lambda: |-
+      return id(power_1).state + id(power_2).state;
+    update_interval: ${sensor_update_interval}
 
   - platform: total_daily_energy
     name: "Total Daily Energy 1"
