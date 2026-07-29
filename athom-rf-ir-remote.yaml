@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom RF IR Remote"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.0.6"
+  project_version: "v3.0.7"
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
   # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
@@ -205,8 +205,8 @@ remote_receiver:
     # RF433 fixed-code decoding: filter glitches, split frames on 4ms idle,
     # and widen tolerance for cheap remotes. rc_switch decoding rejects the
     # receiver's ambient noise, so learning no longer false-triggers.
-    filter: 4us
-    idle: 4ms
+    filter: 50us
+    idle: 10ms
     tolerance: 50%
     id: rf_receiver
     on_rc_switch:
@@ -334,6 +334,14 @@ sensor:
     entity_category: "diagnostic"
     device_class: ""
 
+  - platform: debug
+    free:
+      name: "Heap Free"
+      unit_of_measurement: "KiB"
+      accuracy_decimals: 1
+      filters:
+        - multiply: 0.0009765625
+
 button:
   - platform: restart
     name: "Restart"
@@ -410,6 +418,8 @@ light:
     name: "Status LED"
     disabled_by_default: true
     pin: ${LED_PIN}
+debug:
+  update_interval: 5s
 
 text_sensor:
   - platform: wifi_info
@@ -443,6 +453,10 @@ text_sensor:
     name: "RF Learning Status"
     id: rf_status_text
     icon: mdi:information
+
+  - platform: debug
+    reset_reason:
+      name: "Reset Reason"
 
 # Signal slot selector
 select:
