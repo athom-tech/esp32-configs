@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: China Athom Technology.Athom Dual Plug V3
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: v3.0.3
+  project_version: v3.0.4
   # Restore the relay (GPO switch) upon reboot to state:
   relay1_restore_mode: RESTORE_DEFAULT_ON
   relay2_restore_mode: RESTORE_DEFAULT_ON
@@ -190,6 +190,16 @@ uart:
   parity: EVEN
 
 globals:
+  - id: energy_1
+    type: float
+    restore_value: yes
+    initial_value: '0.0'
+
+  - id: energy_2
+    type: float
+    restore_value: yes
+    initial_value: '0.0'
+
   - id: total_energy
     type: float
     restore_value: yes
@@ -308,14 +318,38 @@ sensor:
       name: Active Power 2
       id: power_2
     energy_1:
-      name: Energy 1
-      id: energy_1
+      internal: true
+      id: energy_1_raw
+      on_value:
+        then:
+          - lambda: |-
+              static float previous_energy_1 = 0.0;
+              float current_energy_1 = id(energy_1_raw).state;
+              id(energy_1) += current_energy_1 - previous_energy_1;
+              previous_energy_1 = current_energy_1;
+              id(energy_1_sensor).update();
     energy_2:
-      name: 'Energy 2'
-      id: energy_2
+      internal: true
+      id: energy_2_raw
+      on_value:
+        then:
+          - lambda: |-
+              static float previous_energy_2 = 0.0;
+              float current_energy_2 = id(energy_2_raw).state;
+              id(energy_2) += current_energy_2 - previous_energy_2;
+              previous_energy_2 = current_energy_2;
+              id(energy_2_sensor).update();
     energy_total:
-      name: 'Energy Total'
-      id: energy_total
+      internal: true
+      id: energy_total_raw
+      on_value:
+        then:
+          - lambda: |-
+              static float previous_energy_total = 0.0;
+              float current_energy_total = id(energy_total_raw).state;
+              id(total_energy) += current_energy_total - previous_energy_total;
+              previous_energy_total = current_energy_total;
+              id(total_energy_sensor).update();
 
   - platform: template
     name: "Total Current"
@@ -342,6 +376,42 @@ sensor:
     accuracy_decimals: 1
     lambda: |-
       return id(power_1).state + id(power_2).state;
+    update_interval: ${sensor_update_interval}
+
+  - platform: template
+    name: "Energy 1"
+    id: energy_1_sensor
+    unit_of_measurement: kWh
+    device_class: "energy"
+    state_class: "total_increasing"
+    icon: mdi:lightning-bolt
+    accuracy_decimals: 3
+    lambda: |-
+      return id(energy_1);
+    update_interval: ${sensor_update_interval}
+
+  - platform: template
+    name: "Energy 2"
+    id: energy_2_sensor
+    unit_of_measurement: kWh
+    device_class: "energy"
+    state_class: "total_increasing"
+    icon: mdi:lightning-bolt
+    accuracy_decimals: 3
+    lambda: |-
+      return id(energy_2);
+    update_interval: ${sensor_update_interval}
+
+  - platform: template
+    name: "Total Energy"
+    id: total_energy_sensor
+    unit_of_measurement: kWh
+    device_class: "energy"
+    state_class: "total_increasing"
+    icon: mdi:lightning-bolt
+    accuracy_decimals: 3
+    lambda: |-
+      return id(total_energy);
     update_interval: ${sensor_update_interval}
 
   - platform: total_daily_energy
@@ -378,6 +448,36 @@ button:
     name: "Safe Mode"
     internal: false
     entity_category: config
+
+  - platform: template
+    name: "Reset Energy 1"
+    icon: mdi:restart-alert
+    entity_category: config
+    on_press:
+      then:
+        - lambda: |-
+            id(energy_1) = 0.0;
+            id(energy_1_sensor).update();
+
+  - platform: template
+    name: "Reset Energy 2"
+    icon: mdi:restart-alert
+    entity_category: config
+    on_press:
+      then:
+        - lambda: |-
+            id(energy_2) = 0.0;
+            id(energy_2_sensor).update();
+
+  - platform: template
+    name: "Reset Total Energy"
+    icon: mdi:restart-alert
+    entity_category: config
+    on_press:
+      then:
+        - lambda: |-
+            id(total_energy) = 0.0;
+            id(total_energy_sensor).update();
 
 switch:
   - platform: gpio
