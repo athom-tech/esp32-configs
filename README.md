@@ -25,15 +25,16 @@ Each file contains a `dashboard_import` URL in the form `github://athom-tech/esp
 | `athom-2ch-relay-board.yaml` | Athom 2CH Relay Board | `esp32dev` | Two-channel relay board with local buttons, RF receiver support, and status telemetry. |
 | `athom-4ch-relay-board.yaml` | Athom 4CH Relay Board | `esp32dev` | Four-channel relay board with local buttons, RF receiver support, and status telemetry. |
 | `athom-8ch-relay-board.yaml` | Athom 8CH Relay Board | `esp32dev` | Eight-channel relay board with local buttons, RF receiver support, and status telemetry. |
+| `athom-dual-smart-plug-v3.yaml` | Athom Dual Plug V3 | `esp32-c3-devkitm-1` | Dual smart plug with independent relay control, per-channel and aggregate power monitoring, persistent energy totals, and energy reset controls. |
 | `athom-energy-monitor-x2.yaml` | Athom Energy Meter | `esp32-c3-devkitm-1` | Two-channel energy monitor using the local `bl0906` component. |
 | `athom-energy-monitor-x6.yaml` | Athom Energy Meter | `esp32-c3-devkitm-1` | Six-channel energy monitor using the local `bl0906` component. |
 | `athom-garage-door.yaml` | Athom Garage Door | `esp32-c3-devkitm-1` | Garage door opener with relay control, door state inputs, template cover, and status LED. |
 | `athom-ld2450-sensor.yaml` | PS02C3MZ Sensor | `esp32-c3-devkitm-1` | LD2450 mmWave presence sensor with target tracking, zones, light sensor, and status LED. |
 | `athom-mini-relay-v2.yaml` | Athom Mini Relay V2 | `esp32-c3-devkitm-1` | Mini relay with local switch input, relay output, status LED, and power monitoring. |
 | `athom-presence-sensor-v3.yaml` | Athom Presence Sensor | `esp32-c3-devkitm-1` | mmWave presence sensor with light sensing, zone controls, UART/I2C peripherals, and status LED. |
-| `athom-rf-ir-remote.yaml` | Athom RF IR Remote | `esp32dev` | RF/IR remote bridge with receiver, transmitter, button input, and status telemetry. |
-| `athom-rgbcw-bulb.yaml` | Athom RGBCW Bulb | `esp32-c3-devkitm-1` | RGBCW bulb with RGBWW light output, power-on state control, and status telemetry. |
-| `athom-rgbcw-light.yaml` | Athom RGBCW Bulb | `esp32-c3-devkitm-1` | 12W RGBCW light variant with RGBWW output and alternate GPIO mapping. |
+| `athom-rf-ir-remote.yaml` | Athom RF IR Remote | `esp32dev` | RF/IR remote bridge with 10 IR learning slots, 16 RF433 learning slots, transmission controls, and status telemetry. |
+| `athom-rgbcw-bulb.yaml` | Athom RGBCW Bulb | `esp32-c3-devkitm-1` | RGBCW bulb with RGBWW output, power-on state control, and switchable ESP-NOW remote pairing and control. |
+| `athom-rgbcw-light.yaml` | Athom RGBCW Bulb | `esp32-c3-devkitm-1` | 12W RGBCW light variant with alternate GPIO mapping and switchable ESP-NOW remote pairing and control. |
 | `athom-scd40-sensor.yaml` | Athom C02 Sensor | `esp32-c3-devkitm-1` | SCD40 CO2, temperature, and humidity sensor with status light control. |
 | `athom-sht40-sensor.yaml` | Athom Temperature Humidity Sensor | `esp32-c3-devkitm-1` | SHT40 temperature and humidity sensor with calibration offsets and status light control. |
 | `athom-smart-plug.yaml` | Athom Plug V3 | `esp32-c3-devkitm-1` | Smart plug with relay control, physical button, status LED, and power monitoring. |
@@ -95,7 +96,9 @@ Use the actual YAML file and hostname for your device.
 
 ### OTA Updates
 
-The YAML files enable ESPHome OTA updates. Once a device has been flashed and is reachable on Wi-Fi, future updates can be installed from ESPHome Dashboard or with the ESPHome CLI.
+The YAML files enable standard ESPHome OTA updates. Once a device has been flashed and is reachable on Wi-Fi, future updates can be installed from ESPHome Dashboard or with the ESPHome CLI.
+
+Most configurations also expose a managed `Firmware Update` entity in Home Assistant. This entity checks the device-specific manifest published on GitHub Pages and can install released firmware over HTTP. The ESP32-C5 smart plug currently uses standard ESPHome OTA only.
 
 If OTA fails, confirm that:
 
@@ -112,6 +115,7 @@ If OTA fails, confirm that:
 - OTA and web server support are enabled in the device configurations.
 - Common diagnostic entities include status, uptime, Wi-Fi signal, and restart/factory-reset style buttons.
 - Power-monitoring devices expose voltage, current, power, energy, total energy, and related calculated sensors where supported by the hardware.
+- The dual smart plug exposes per-channel measurements plus total current and total active power, persists per-channel and aggregate energy totals, and provides controls to reset those totals.
 - Presence and LD2450-based devices expose target, zone, presence, illuminance, and radar control entities.
 - Devices are expected to be discovered by Home Assistant through the ESPHome integration after they are on the network.
 
