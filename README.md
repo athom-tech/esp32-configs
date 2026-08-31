@@ -25,7 +25,7 @@ Each file contains a `dashboard_import` URL in the form `github://athom-tech/esp
 | `athom-2ch-relay-board.yaml` | Athom 2CH Relay Board | `esp32dev` | Two-channel relay board with local buttons, RF receiver support, and status telemetry. |
 | `athom-4ch-relay-board.yaml` | Athom 4CH Relay Board | `esp32dev` | Four-channel relay board with local buttons, RF receiver support, and status telemetry. |
 | `athom-8ch-relay-board.yaml` | Athom 8CH Relay Board | `esp32dev` | Eight-channel relay board with local buttons, RF receiver support, and status telemetry. |
-| `athom-dual-smart-plug-v3.yaml` | Athom Dual Plug V3 | `esp32-c3-devkitm-1` | Dual smart plug with independent relay control, per-channel and aggregate power monitoring, persistent energy totals, and energy reset controls. |
+| `athom-dual-smart-plug-v3.yaml` | Athom Dual Plug V3 | `esp32-c3-devkitm-1` | Dual-channel smart plug with independent relay control and buttons, dual-channel energy metering. |
 | `athom-energy-monitor-x2.yaml` | Athom Energy Meter | `esp32-c3-devkitm-1` | Two-channel energy monitor using the local `bl0906` component. |
 | `athom-energy-monitor-x6.yaml` | Athom Energy Meter | `esp32-c3-devkitm-1` | Six-channel energy monitor using the local `bl0906` component. |
 | `athom-garage-door.yaml` | Athom Garage Door | `esp32-c3-devkitm-1` | Garage door opener with relay control, door state inputs, template cover, and status LED. |
@@ -133,7 +133,7 @@ If OTA fails, confirm that:
 - OTA and web server support are enabled in the device configurations.
 - Common diagnostic entities include status, uptime, Wi-Fi signal, and restart/factory-reset style buttons.
 - Power-monitoring devices expose voltage, current, power, energy, total energy, and related calculated sensors where supported by the hardware.
-- The dual smart plug exposes per-channel measurements plus total current and total active power, persists per-channel and aggregate energy totals, and provides controls to reset those totals.
+- The dual smart plug performs dual-channel energy metering with the `bl0939` chip over UART, exposing per-channel voltage, current, active power, energy, and daily energy, plus total current, total active power, and total energy. It persists per-channel and aggregate energy totals across reboots and provides buttons to reset each total. A configurable current limit (16 A by default) trips the affected channel off for overcurrent protection, a `Power On State` selector sets the boot behaviour (always off, always on, or restore previous state), and each channel can be toggled with its physical button (a 4-second hold triggers factory reset).
 - Presence and LD2450-based devices expose target, zone, presence, illuminance, and radar control entities.
 - Devices are expected to be discovered by Home Assistant through the ESPHome integration after they are on the network.
 
