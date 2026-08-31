@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom Plug V5"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v5.0.3"
+  project_version: "v5.0.4"
   # Restore the relay (GPO switch) upon reboot to state:
   relay_restore_mode: RESTORE_DEFAULT_ON
   # Set the update interval for sensors
@@ -209,11 +209,21 @@ binary_sensor:
           - ON for at most 1s
           - OFF for at least 0.2s
         then:
-          - switch.toggle: relay
+          # Ignore short press when child lock is on, to stop kids toggling the socket
+          - if:
+              condition:
+                switch.is_off: child_lock
+              then:
+                - switch.toggle: relay
       - timing:
           - ON for at least 4s
         then:
-          - button.press: Reset
+          # Ignore long press when child lock is on, to prevent accidental factory reset
+          - if:
+              condition:
+                switch.is_off: child_lock
+              then:
+                - button.press: Reset
 
 sensor:
   - platform: uptime
@@ -328,6 +338,15 @@ switch:
     id: relay
     restore_mode: ${relay_restore_mode}
     icon: mdi:${power_plug_type}
+
+  # Child lock: when on, ignore physical button short/long press, but keep remote (HA/web) control working
+  - platform: template
+    name: "Child Lock"
+    id: child_lock
+    icon: mdi:lock
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF   # Keep last state after power loss/reboot, default off on first boot
+    entity_category: config
 
 light:
   - platform: status_led

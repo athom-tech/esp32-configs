@@ -100,6 +100,24 @@ The YAML files enable standard ESPHome OTA updates. Once a device has been flash
 
 Most configurations also expose a managed `Firmware Update` entity in Home Assistant. This entity checks the device-specific manifest published on GitHub Pages and can install released firmware over HTTP. The ESP32-C5 smart plug currently uses standard ESPHome OTA only.
 
+#### Disabling the Managed Firmware Update
+
+The managed update feature is provided by the `ota` `http_request` platform, the `http_request` component, and the `update` `Firmware Update` entity. On some ESPHome versions the periodic HTTP manifest checks can make the device's status LED flash constantly (see [issue #88](https://github.com/athom-tech/esp32-configs/issues/88)).
+
+Because devices are imported through `packages:`, do not edit the Athom YAML directly. Instead, add these overrides to your **own** configuration (the file that imports the package) to remove the managed update components:
+
+```yaml
+ota:
+  - id: !remove ota_http_request
+
+update:
+  - id: !remove update_http_request
+
+http_request: !remove
+```
+
+Standard ESPHome OTA (the `ota_esphome` platform) still works after this — only the managed HTTP-manifest updating and its `Firmware Update` entity are removed. To re-enable the feature later, delete this override block.
+
 If OTA fails, confirm that:
 
 - The device is powered and connected to the same network as ESPHome.
@@ -140,6 +158,10 @@ Make sure the device and Home Assistant are on the same network segment, then ad
 ### OTA Update Fails
 
 Use the installed device's matching YAML, verify network reachability, and try a USB flash if the device is offline or running incompatible firmware.
+
+### Status LED Flashes Constantly
+
+On some ESPHome versions, the periodic HTTP requests from the managed firmware-update feature can make the status LED flash rapidly and constantly, even though the device otherwise works and stays connected to Home Assistant. Disable the managed update as described in [Disabling the Managed Firmware Update](#disabling-the-managed-firmware-update).
 
 ### Local Build Fails
 
