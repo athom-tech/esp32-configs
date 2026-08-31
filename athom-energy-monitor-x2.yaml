@@ -4,8 +4,8 @@ substitutions:
   # Allows ESP device to be automatically lined to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc
   room: ""
   device_description: "athom bl0906 energy meter (2 channels)"
-  project_name: "Athom Technology.Athom Energy Meter(2 Channels)"
-  project_version: "3.0.3"
+  project_name: "China Athom Technology.Athom Energy Meter(2 Channels)"
+  project_version: "3.0.4"
   update_interval: 5s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
@@ -393,7 +393,7 @@ text_sensor:
     id: device_last_restart
     icon: mdi:clock
     entity_category: diagnostic
-    device_class: timestamp
+    # device_class: timestamp
 
 time:
   - platform: sntp
