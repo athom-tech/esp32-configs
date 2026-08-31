@@ -349,7 +349,7 @@ sensor:
 
   - platform: total_daily_energy
     name: "Total Daily Energy"
-    id: total_daily_energy
+    id: id_total_daily_energy
     restore: true
     power_id: power_sensor
     unit_of_measurement: kWh
@@ -361,7 +361,7 @@ sensor:
 button:
   - platform: restart
     name: "Restart"
-    id: restart
+    id: id_restart
     entity_category: config
 
   - platform: factory_reset
@@ -371,7 +371,7 @@ button:
 
   - platform: safe_mode
     name: "Safe Mode"
-    id: safe_mode
+    id: id_safe_mode
     internal: false
     entity_category: config
 
