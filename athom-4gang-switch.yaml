@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.4Gang Switch"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.0.3"
+  project_version: "v3.0.4"
   # Restore the relay (GPO switch) upon reboot to state:
   light1_restore_mode: RESTORE_DEFAULT_OFF
   light2_restore_mode: RESTORE_DEFAULT_OFF
@@ -40,7 +40,7 @@ esphome:
   comment: "${device_description}"
   area: "${room}"  
   name_add_mac_suffix: true
-  min_version: 2025.7.0
+  min_version: 2026.7.0
   project:
     name: "${project_name}"
     version: "${project_version}"
@@ -216,6 +216,8 @@ binary_sensor:
     name: "Button1"
     id: button1
     disabled_by_default: true
+    filters:
+      - delayed_on_off: 20ms
     on_multi_click:
       - timing:
           - ON for at most 0.5s
@@ -237,10 +239,18 @@ binary_sensor:
     name: "Button2"
     id: button2
     disabled_by_default: true
-    on_click:
-      max_length: 0.5s
-      then:
-        - light.toggle: light2
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing:
+          - ON for at most 0.5s
+          - OFF for at least 0.2s
+        then:
+          - light.toggle: light2
+      - timing:
+          - ON for at least 4s
+        then:
+          - button.press: Reset
   #Button3
   - platform: gpio
     pin:
@@ -252,10 +262,18 @@ binary_sensor:
     name: "Button3"
     id: button3
     disabled_by_default: true
-    on_click:
-      max_length: 0.5s
-      then:
-        - light.toggle: light3
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing:
+          - ON for at most 0.5s
+          - OFF for at least 0.2s
+        then:
+          - light.toggle: light3
+      - timing:
+          - ON for at least 4s
+        then:
+          - button.press: Reset
   #Button4
   - platform: gpio
     pin:
@@ -267,10 +285,18 @@ binary_sensor:
     name: "Button4"
     id: button4
     disabled_by_default: true
-    on_click:
-      max_length: 0.5s
-      then:
-        - light.toggle: light4
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing:
+          - ON for at most 0.5s
+          - OFF for at least 0.2s
+        then:
+          - light.toggle: light4
+      - timing:
+          - ON for at least 4s
+        then:
+          - button.press: Reset
 
 sensor:
   - platform: uptime
