@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom Plug V3"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v2.0.6"
+  project_version: "v2.0.7"
   # Restore the relay (GPO switch) upon reboot to state:
   relay_restore_mode: RESTORE_DEFAULT_ON
   # Set the update interval for sensors
@@ -181,6 +181,7 @@ dashboard_import:
   package_import_url: github://athom-tech/esp32-configs/athom-smart-plug.yaml
 
 uart:
+  id: uart_cse7766
   rx_pin: GPIO20
   baud_rate: 4800
   data_bits: 8
@@ -216,6 +217,7 @@ select:
 binary_sensor:
   - platform: status
     name: "Status"
+    id: id_status
     icon: mdi:check-network-outline
     entity_category: diagnostic    
 
@@ -265,6 +267,7 @@ sensor:
   - platform: copy
     source_id: wifi_signal_db
     name: "WiFi Signal Percent"
+    id: wifi_signal_percent
     filters:
       - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
     unit_of_measurement: "Signal %"
@@ -346,6 +349,7 @@ sensor:
 
   - platform: total_daily_energy
     name: "Total Daily Energy"
+    id: id_total_daily_energy
     restore: true
     power_id: power_sensor
     unit_of_measurement: kWh
@@ -357,6 +361,7 @@ sensor:
 button:
   - platform: restart
     name: "Restart"
+    id: id_restart
     entity_category: config
 
   - platform: factory_reset
@@ -366,6 +371,7 @@ button:
 
   - platform: safe_mode
     name: "Safe Mode"
+    id: id_safe_mode
     internal: false
     entity_category: config
 
