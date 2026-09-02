@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Mini Relay V2"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.1.2"
+  project_version: "v3.1.3"
    # Restore the relay (GPO switch) upon reboot to state:
   light_restore_mode: RESTORE_DEFAULT_OFF
   # Set the update interval for sensors
@@ -42,7 +42,7 @@ esphome:
   comment: "${device_description}"
   area: "${room}"  
   name_add_mac_suffix: true
-  min_version: 2025.8.0
+  min_version: 2026.8.0
   project:
     name: "${project_name}"
     version: "${project_version}"
@@ -177,6 +177,9 @@ binary_sensor:
       inverted: true
     name: "Power Button"
     disabled_by_default: true
+    id: power_button
+    filters:
+      - delayed_on_off: 20ms
     on_multi_click:
       - timing:
           - ON for at most 1s
@@ -197,6 +200,8 @@ binary_sensor:
       mode: INPUT_PULLUP
     on_state:
       - light.toggle: mini_relay
+    filters:
+      - delayed_on_off: 20ms
     on_multi_click:
       - timing:
           - ON for at most 0.5s

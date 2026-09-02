@@ -4,7 +4,7 @@ substitutions:
   room: ""
   device_description: "athom esp32 8ch relay board"
   project_name: "Athom Technology.ESP32 8CH Relay Board"
-  project_version: "v2.0.7"
+  project_version: "v2.0.8"
   update_interval: 60s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
@@ -37,7 +37,7 @@ esphome:
   comment: "${device_description}"
   area: "${room}"
   name_add_mac_suffix: true
-  min_version: 2026.6.0
+  min_version: 2026.8.0
   project:
     name: "${project_name}"
     version: "${project_version}"
@@ -161,6 +161,9 @@ binary_sensor:
       inverted: true
     name: "Power Button1"
     disabled_by_default: true
+    id: power_button1
+    filters:
+      - delayed_on_off: 20ms
     on_multi_click:
       - timing:
         - ON for at most 1s
@@ -179,6 +182,9 @@ binary_sensor:
       inverted: true
     name: "Power Button2"
     disabled_by_default: true
+    id: power_button2
+    filters:
+      - delayed_on_off: 20ms
     on_multi_click:
       - timing:
         - ON for at most 1s
@@ -197,6 +203,9 @@ binary_sensor:
       inverted: true
     name: "Power Button3"
     disabled_by_default: true
+    id: power_button3
+    filters:
+      - delayed_on_off: 20ms
     on_multi_click:
       - timing:
         - ON for at most 1s
@@ -215,6 +224,9 @@ binary_sensor:
       inverted: true
     name: "Power Button4"
     disabled_by_default: true
+    id: power_button4
+    filters:
+      - delayed_on_off: 20ms
     on_multi_click:
       - timing:
         - ON for at most 1s
@@ -233,6 +245,9 @@ binary_sensor:
       inverted: true
     name: "Power Button5"
     disabled_by_default: true
+    id: power_button5
+    filters:
+      - delayed_on_off: 20ms
     on_multi_click:
       - timing:
         - ON for at most 1s
@@ -251,6 +266,9 @@ binary_sensor:
       inverted: true
     name: "Power Button6"
     disabled_by_default: true
+    id: power_button6
+    filters:
+      - delayed_on_off: 20ms
     on_multi_click:
       - timing:
         - ON for at most 1s
@@ -268,7 +286,10 @@ binary_sensor:
         input: true
       inverted: true
     name: "Power Button7"
+    id: power_button7
     disabled_by_default: true
+    filters:
+      - delayed_on_off: 20ms
     on_multi_click:
       - timing:
         - ON for at most 1s
@@ -287,6 +308,9 @@ binary_sensor:
       inverted: true
     name: "Power Button8"
     disabled_by_default: true
+    id: power_button8
+    filters:
+      - delayed_on_off: 20ms
     on_multi_click:
       - timing:
         - ON for at most 1s

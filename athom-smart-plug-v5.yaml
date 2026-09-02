@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom Plug V5"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v5.0.4"
+  project_version: "v5.0.5"
   # Restore the relay (GPO switch) upon reboot to state:
   relay_restore_mode: RESTORE_DEFAULT_ON
   # Set the update interval for sensors
@@ -44,7 +44,7 @@ esphome:
   comment: "${device_description}"
   area: "${room}"  
   name_add_mac_suffix: true
-  min_version: 2026.6.0
+  min_version: 2026.8.0
   project:
     name: "${project_name}"
     version: "${project_version}"
@@ -204,6 +204,8 @@ binary_sensor:
     name: "Power Button"
     id: power_button
     disabled_by_default: true
+    filters:
+      - delayed_on_off: 20ms
     on_multi_click:
       - timing:
           - ON for at most 1s
