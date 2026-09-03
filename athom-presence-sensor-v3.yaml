@@ -180,7 +180,7 @@ binary_sensor:
       inverted: true
     name: "Button"
     disabled_by_default: true
-    id: button
+    id: reset_button
     filters:
       - delayed_on_off: 20ms
     on_multi_click:
