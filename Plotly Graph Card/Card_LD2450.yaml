@@ -1,170 +1,201 @@
-type: custom:plotly-graph
-title: Target Positions
-refresh_interval: 1
-hours_to_show: current_day
-layout:
-  height: 230
-  margin:
-    l: 50
-    r: 20
-    t: 20
-    b: 40
-  showlegend: true
-  xaxis:
-    dtick: 1000
-    gridcolor: RGBA(200,200,200,0.15)
-    zerolinecolor: RGBA(200,200,200,0.15)
-    type: number
-    fixedrange: true
-    range:
-      - 4000
-      - -4000
-  yaxis:
-    dtick: 1000
-    gridcolor: RGBA(200,200,200,0.15)
-    zerolinecolor: RGBA(200,200,200,0.15)
-    scaleanchor: x
-    scaleratio: 1
-    fixedrange: true
-    range:
-      - 7500
-      - 0
-entities:
-  - entity: ""
-    name: Target1
-    marker:
-      size: 12
-    line:
-      shape: spline
-      width: 5
-    x:
-      - $ex hass.states["sensor.replace_me_target_1_x"].state
-    "y":
-      - $ex hass.states["sensor.replace_me_target_1_y"].state
-  - entity: ""
-    name: Target2
-    marker:
-      size: 12
-    line:
-      shape: spline
-      width: 5
-    x:
-      - $ex hass.states["sensor.replace_me_target_2_x"].state
-    "y":
-      - $ex hass.states["sensor.replace_me_target_2_y"].state
-  - entity: ""
-    name: Target3
-    marker:
-      size: 12
-    line:
-      shape: spline
-      width: 5
-    x:
-      - $ex hass.states["sensor.replace_me_target_3_x"].state
-    "y":
-      - $ex hass.states["sensor.replace_me_target_3_y"].state
-  - entity: ""
-    name: Zone1
-    mode: lines
-    fill: toself
-    fillcolor: RGBA(20,200,0,0.06)
-    line:
-      color: RGBA(20,200,0,0.2)
-      shape: line
-      width: 2
-    x:
-      - $ex hass.states["number.replace_me_zone_1_x1"].state
-      - $ex hass.states["number.replace_me_zone_1_x1"].state
-      - $ex hass.states["number.replace_me_zone_1_x2"].state
-      - $ex hass.states["number.replace_me_zone_1_x2"].state
-      - $ex hass.states["number.replace_me_zone_1_x1"].state
-    "y":
-      - $ex hass.states["number.replace_me_zone_1_y1"].state
-      - $ex hass.states["number.replace_me_zone_1_y2"].state
-      - $ex hass.states["number.replace_me_zone_1_y2"].state
-      - $ex hass.states["number.replace_me_zone_1_y1"].state
-      - $ex hass.states["number.replace_me_zone_1_y1"].state
-  - entity: ""
-    name: Zone2
-    mode: lines
-    fill: toself
-    fillcolor: RGBA(200,0,255,0.06)
-    line:
-      color: RGBA(200,0,255,0.2)
-      shape: line
-      width: 2
-    x:
-      - $ex hass.states["number.replace_me_zone_2_x1"].state
-      - $ex hass.states["number.replace_me_zone_2_x1"].state
-      - $ex hass.states["number.replace_me_zone_2_x2"].state
-      - $ex hass.states["number.replace_me_zone_2_x2"].state
-      - $ex hass.states["number.replace_me_zone_2_x1"].state
-    "y":
-      - $ex hass.states["number.replace_me_zone_2_y1"].state
-      - $ex hass.states["number.replace_me_zone_2_y2"].state
-      - $ex hass.states["number.replace_me_zone_2_y2"].state
-      - $ex hass.states["number.replace_me_zone_2_y1"].state
-      - $ex hass.states["number.replace_me_zone_2_y1"].state
-  - entity: ""
-    name: Zone3
-    mode: lines
-    fill: toself
-    fillcolor: RGBA(200,120,55,0.06)
-    line:
-      color: RGBA(200,120,55,0.2)
-      shape: line
-      width: 2
-    x:
-      - $ex hass.states["number.replace_me_zone_3_x1"].state
-      - $ex hass.states["number.replace_me_zone_3_x1"].state
-      - $ex hass.states["number.replace_me_zone_3_x2"].state
-      - $ex hass.states["number.replace_me_zone_3_x2"].state
-      - $ex hass.states["number.replace_me_zone_3_x1"].state
-    "y":
-      - $ex hass.states["number.replace_me_zone_3_y1"].state
-      - $ex hass.states["number.replace_me_zone_3_y2"].state
-      - $ex hass.states["number.replace_me_zone_3_y2"].state
-      - $ex hass.states["number.replace_me_zone_3_y1"].state
-      - $ex hass.states["number.replace_me_zone_3_y1"].state
-  - entity: ""
-    name: Coverage
-    mode: lines
-    fill: tonexty
-    fillcolor: rgba(168, 216, 234, 0.15)
-    line:
-      shape: line
-      width: 1
-      dash: dot
-    x:
-      - 0
-      - $ex 7500 * Math.sin((2 * Math.PI)/360 * 60)
-      - 4500
-      - 4000
-      - 3000
-      - 2000
-      - 1000
-      - 0
-      - -1000
-      - -2000
-      - -3000
-      - -4000
-      - -4500
-      - $ex -7500 * Math.sin((2 * Math.PI)/360 * 60)
-      - 0
-    "y":
-      - 0
-      - $ex 7500 * Math.cos((2 * Math.PI)/360 * 60)
-      - $ex Math.sqrt( 7500**2 - 4500**2 )
-      - $ex Math.sqrt( 7500**2 - 4000**2 )
-      - $ex Math.sqrt( 7500**2 - 3000**2 )
-      - $ex Math.sqrt( 7500**2 - 2000**2 )
-      - $ex Math.sqrt( 7500**2 - 1000**2 )
-      - 7500
-      - $ex Math.sqrt( 7500**2 - 1000**2 )
-      - $ex Math.sqrt( 7500**2 - 2000**2 )
-      - $ex Math.sqrt( 7500**2 - 3000**2 )
-      - $ex Math.sqrt( 7500**2 - 4000**2 )
-      - $ex Math.sqrt( 7500**2 - 4500**2 )
-      - $ex 7500 * Math.cos((2 * Math.PI)/360 * 60)
-      - 0
-raw_plotly_config: true
+type: vertical-stack
+cards:
+  - type: custom:plotly-graph
+    title: Target Positions
+    refresh_interval: 1
+    hours_to_show: 1h
+    raw_plotly_config: true
+    layout:
+      height: 300
+      margin:
+        l: 52
+        r: 132
+        t: 28
+        b: 46
+      paper_bgcolor: "#ffffff"
+      plot_bgcolor: "#ffffff"
+      font:
+        color: "#687080"
+        size: 12
+      showlegend: true
+      hovermode: closest
+      legend:
+        x: 1.02
+        y: 1
+        xanchor: left
+        yanchor: top
+        bgcolor: "rgba(255,255,255,0)"
+        borderwidth: 0
+        font:
+          color: "#687080"
+          size: 12
+      xaxis:
+        title: "X (mm)"
+        type: number
+        range:
+          - 7000
+          - -7000
+        dtick: 1000
+        fixedrange: true
+        showgrid: true
+        gridcolor: "#edf0f3"
+        gridwidth: 1
+        zeroline: true
+        zerolinecolor: "#d9dee5"
+        zerolinewidth: 1
+        showline: true
+        linecolor: "#d9dee5"
+        tickfont:
+          color: "#687080"
+          size: 11
+      yaxis:
+        title: "Y (mm)"
+        type: number
+        range:
+          - 7500
+          - 0
+        constrain: domain
+        constraintoward: top
+        rangemode: nonnegative
+        dtick: 1000
+        fixedrange: true
+        scaleanchor: x
+        scaleratio: 1
+        showgrid: true
+        gridcolor: "#edf0f3"
+        gridwidth: 1
+        zeroline: true
+        zerolinecolor: "#d9dee5"
+        zerolinewidth: 1
+        showline: true
+        linecolor: "#d9dee5"
+        tickfont:
+          color: "#687080"
+          size: 11
+
+      shapes:
+        - type: path
+          name: Coverage ±60°
+          layer: below
+          path: "M 0,0 L -6495.19,3750 L -5745.33,4820.91 L -4820.91,5745.33 L -3750,6495.19 L -2565.15,7047.69 L -1302.36,7386.07 L 0,7500 L 1302.36,7386.07 L 2565.15,7047.69 L 3750,6495.19 L 4820.91,5745.33 L 5745.33,4820.91 L 6495.19,3750 Z"
+          fillcolor: "rgba(185,220,235,0.30)"
+          line:
+            color: "rgba(231,127,193,0.90)"
+            width: 1.5
+            dash: dot
+
+    entities:
+      - entity: ""
+        name: Target 1
+        mode: markers
+        marker:
+          size: 13
+          color: "#2d78b7"
+          symbol: circle
+        x:
+          - '$ex (() => { const x = Number(hass.states["sensor.replace_me_target_1_x"]?.state); const y = Number(hass.states["sensor.replace_me_target_1_y"]?.state); const d = Number(hass.states["sensor.replace_me_target_1_distance"]?.state); return Number.isFinite(x) && (Number.isFinite(y) || Number.isFinite(d)) && (x !== 0 || y !== 0 || d !== 0) ? x : null; })()'
+        "y":
+          - '$ex (() => { const x = Number(hass.states["sensor.replace_me_target_1_x"]?.state); const y = Number(hass.states["sensor.replace_me_target_1_y"]?.state); const d = Number(hass.states["sensor.replace_me_target_1_distance"]?.state); const fallback = Number.isFinite(d) && Number.isFinite(x) ? Math.sqrt(Math.max(0, d * d - x * x)) : NaN; const value = Number.isFinite(y) ? y : fallback; return Number.isFinite(x) && Number.isFinite(value) && (x !== 0 || value !== 0) ? value : null; })()'
+
+      - entity: ""
+        name: Target 2
+        mode: markers
+        marker:
+          size: 13
+          color: "#ff7900"
+          symbol: circle
+        x:
+          - '$ex (() => { const x = Number(hass.states["sensor.replace_me_target_2_x"]?.state); const y = Number(hass.states["sensor.replace_me_target_2_y"]?.state); const d = Number(hass.states["sensor.replace_me_target_2_distance"]?.state); return Number.isFinite(x) && (Number.isFinite(y) || Number.isFinite(d)) && (x !== 0 || y !== 0 || d !== 0) ? x : null; })()'
+        "y":
+          - '$ex (() => { const x = Number(hass.states["sensor.replace_me_target_2_x"]?.state); const y = Number(hass.states["sensor.replace_me_target_2_y"]?.state); const d = Number(hass.states["sensor.replace_me_target_2_distance"]?.state); const fallback = Number.isFinite(d) && Number.isFinite(x) ? Math.sqrt(Math.max(0, d * d - x * x)) : NaN; const value = Number.isFinite(y) ? y : fallback; return Number.isFinite(x) && Number.isFinite(value) && (x !== 0 || value !== 0) ? value : null; })()'
+
+      - entity: ""
+        name: Target 3
+        mode: markers
+        marker:
+          size: 13
+          color: "#2f9d38"
+          symbol: circle
+        x:
+          - '$ex (() => { const x = Number(hass.states["sensor.replace_me_target_3_x"]?.state); const y = Number(hass.states["sensor.replace_me_target_3_y"]?.state); const d = Number(hass.states["sensor.replace_me_target_3_distance"]?.state); return Number.isFinite(x) && (Number.isFinite(y) || Number.isFinite(d)) && (x !== 0 || y !== 0 || d !== 0) ? x : null; })()'
+        "y":
+          - '$ex (() => { const x = Number(hass.states["sensor.replace_me_target_3_x"]?.state); const y = Number(hass.states["sensor.replace_me_target_3_y"]?.state); const d = Number(hass.states["sensor.replace_me_target_3_distance"]?.state); const fallback = Number.isFinite(d) && Number.isFinite(x) ? Math.sqrt(Math.max(0, d * d - x * x)) : NaN; const value = Number.isFinite(y) ? y : fallback; return Number.isFinite(x) && Number.isFinite(value) && (x !== 0 || value !== 0) ? value : null; })()'
+
+      - entity: ""
+        name: Zone 1
+        mode: lines
+        fill: toself
+        fillcolor: "rgba(120,220,130,0.18)"
+        line:
+          color: "#a9e4ad"
+          width: 2
+          shape: linear
+        x: >-
+          $ex (() => { const n = (id) => { const v = Number(hass.states[id]?.state); return Number.isFinite(v) ? v : null; }; const x1 = n("number.replace_me_zone_1_x1"); const x2 = n("number.replace_me_zone_1_x2"); return [x1, x1, x2, x2, x1]; })()
+        "y": >-
+          $ex (() => { const n = (id) => { const v = Number(hass.states[id]?.state); return Number.isFinite(v) ? v : null; }; const y1 = n("number.replace_me_zone_1_y1"); const y2 = n("number.replace_me_zone_1_y2"); return [y1, y2, y2, y1, y1]; })()
+
+      - entity: ""
+        name: Zone 2
+        mode: lines
+        fill: toself
+        fillcolor: "rgba(210,165,245,0.18)"
+        line:
+          color: "#d9a9f3"
+          width: 2
+          shape: linear
+        x: >-
+          $ex (() => { const n = (id) => { const v = Number(hass.states[id]?.state); return Number.isFinite(v) ? v : null; }; const x1 = n("number.replace_me_zone_2_x1"); const x2 = n("number.replace_me_zone_2_x2"); return [x1, x1, x2, x2, x1]; })()
+        "y": >-
+          $ex (() => { const n = (id) => { const v = Number(hass.states[id]?.state); return Number.isFinite(v) ? v : null; }; const y1 = n("number.replace_me_zone_2_y1"); const y2 = n("number.replace_me_zone_2_y2"); return [y1, y2, y2, y1, y1]; })()
+
+      - entity: ""
+        name: Zone 3
+        mode: lines
+        fill: toself
+        fillcolor: "rgba(250,190,140,0.18)"
+        line:
+          color: "#f2c49f"
+          width: 2
+          shape: linear
+        x: >-
+          $ex (() => { const n = (id) => { const v = Number(hass.states[id]?.state); return Number.isFinite(v) ? v : null; }; const x1 = n("number.replace_me_zone_3_x1"); const x2 = n("number.replace_me_zone_3_x2"); return [x1, x1, x2, x2, x1]; })()
+        "y": >-
+          $ex (() => { const n = (id) => { const v = Number(hass.states[id]?.state); return Number.isFinite(v) ? v : null; }; const y1 = n("number.replace_me_zone_3_y1"); const y2 = n("number.replace_me_zone_3_y2"); return [y1, y2, y2, y1, y1]; })()
+
+  - type: entities
+    title: Zone Settings
+    show_header_toggle: false
+    entities:
+      - entity: select.replace_me_zone_type
+        name: Zone Type
+      - type: section
+        label: Zone 1
+      - entity: number.replace_me_zone_1_x1
+        name: Zone 1 X1
+      - entity: number.replace_me_zone_1_y1
+        name: Zone 1 Y1
+      - entity: number.replace_me_zone_1_x2
+        name: Zone 1 X2
+      - entity: number.replace_me_zone_1_y2
+        name: Zone 1 Y2
+      - type: section
+        label: Zone 2
+      - entity: number.replace_me_zone_2_x1
+        name: Zone 2 X1
+      - entity: number.replace_me_zone_2_y1
+        name: Zone 2 Y1
+      - entity: number.replace_me_zone_2_x2
+        name: Zone 2 X2
+      - entity: number.replace_me_zone_2_y2
+        name: Zone 2 Y2
+      - type: section
+        label: Zone 3
+      - entity: number.replace_me_zone_3_x1
+        name: Zone 3 X1
+      - entity: number.replace_me_zone_3_y1
+        name: Zone 3 Y1
+      - entity: number.replace_me_zone_3_x2
+        name: Zone 3 X2
+      - entity: number.replace_me_zone_3_y2
+        name: Zone 3 Y2
