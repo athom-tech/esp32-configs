@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Mini Relay V2"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.1.3"
+  project_version: "v3.1.4"
    # Restore the relay (GPO switch) upon reboot to state:
   light_restore_mode: RESTORE_DEFAULT_OFF
   # Set the update interval for sensors
@@ -327,6 +327,16 @@ button:
     name: "Safe Mode"
     internal: false
     entity_category: config
+
+  - platform: template
+    name: "Reset Total Energy"
+    icon: mdi:restart-alert
+    entity_category: config
+    on_press:
+      then:
+        - lambda: |-
+            id(total_energy) = 0.0;
+            id(total_energy_sensor).update();
 
 output:
   - platform: gpio

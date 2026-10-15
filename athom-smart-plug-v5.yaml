@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom Plug V5"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v5.0.5"
+  project_version: "v5.0.6"
   # Restore the relay (GPO switch) upon reboot to state:
   relay_restore_mode: RESTORE_DEFAULT_ON
   # Set the update interval for sensors
@@ -285,8 +285,6 @@ sensor:
       unit_of_measurement: kWh
       filters:
         - throttle: ${sensor_update_interval}
-        # Multiplication factor from W to kW is 0.001
-        - multiply: 0.001
       on_value:
         then:
           - lambda: |-
@@ -332,6 +330,16 @@ button:
     name: "Safe Mode"
     internal: false
     entity_category: config
+
+  - platform: template
+    name: "Reset Total Energy"
+    icon: mdi:restart-alert
+    entity_category: config
+    on_press:
+      then:
+        - lambda: |-
+            id(total_energy) = 0.0;
+            id(total_energy_sensor).update();
 
 switch:
   - platform: gpio
