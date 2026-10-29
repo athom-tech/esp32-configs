@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.3Gang Switch"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.0.4"
+  project_version: "v3.0.5"
   # Restore the relay (GPO switch) upon reboot to state:
   light1_restore_mode: RESTORE_DEFAULT_OFF
   light2_restore_mode: RESTORE_DEFAULT_OFF
@@ -157,7 +157,7 @@ wifi:
 
 captive_portal:
 
-esp32_improv:
+improv_ble:
   authorizer: none
 
 esp32_ble_tracker:
