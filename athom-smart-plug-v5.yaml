@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom Plug V5"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v5.0.6"
+  project_version: "v5.0.7"
   # Restore the relay (GPO switch) upon reboot to state:
   relay_restore_mode: RESTORE_DEFAULT_ON
   # Set the update interval for sensors
@@ -138,7 +138,7 @@ wifi:
 
 captive_portal:
 
-esp32_improv:
+improv_ble:
   authorizer: none
 
 esp32_ble_tracker:
