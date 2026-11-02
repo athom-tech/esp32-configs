@@ -58,14 +58,17 @@ esp32:
       CONFIG_ESP_TASK_WDT_TIMEOUT_S: "10"
 
 preferences:
+  id: preferences_component
   flash_write_interval: 1min
 
 logger:
+  id: logger_component
   level: ${log_level}
   hardware_uart: UART0
   baud_rate: 115200
 
 api:
+  id: api_component
   # reboot_timeout: 0s
   # Only enable BLE tracking when wifi is up and api is connected
   # Gives single-core ESP32-C3 devices time to manage wifi and authenticate with api
@@ -106,15 +109,19 @@ update:
     # update_interval defaults to 6h (how often it checks, not installs)
 
 mdns:
+  id: mdns_component
   disabled: false
 
 web_server:
+  id: web_server_component
   port: 80
 
 network:
+  id: network_component
   enable_ipv6: ${ipv6_enable}
 
 wifi:
+  id: wifi_component
   # This spawns an AP with the device name and mac address with no password.
   ap: {}
   # Allow rapid re-connection to previously connect WiFi SSID, skipping scan of all SSID
@@ -123,11 +130,14 @@ wifi:
   domain: "${dns_domain}"
 
 captive_portal:
+  id: captive_portal_component
 
 improv_ble:
+  id: improv_ble_component
   authorizer: none
 
 esp32_ble_tracker:
+  id: esp32_ble_tracker_component
   scan_parameters:
     # Don't auto start BLE scanning, we control it in the `api` block's automation.
     continuous: false
@@ -138,6 +148,7 @@ esp32_ble_tracker:
     # required if your device is controlling other sensors or doing PWM for lights etc.
 
 bluetooth_proxy:
+  id: bluetooth_proxy_component
   active: true
 
 dashboard_import:
@@ -153,11 +164,13 @@ light:
 
 i2c:
   sda: GPIO18
+  id: i2c_bus
   scl: GPIO19
   scan: true
 
 uart:
   tx_pin: GPIO8
+  id: uart_bus
   rx_pin: GPIO5
   baud_rate: 115200
   # debug:
@@ -171,6 +184,7 @@ uart:
 binary_sensor:
   - platform: status
     name: "Status"
+    id: id_status
     entity_category: diagnostic
 
   - platform: gpio
@@ -255,6 +269,7 @@ sensor:
   - platform: copy
     source_id: wifi_signal_db
     name: "WiFi Signal Percent"
+    id: wifi_signal_percent
     filters:
       - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
     unit_of_measurement: "Signal %"
@@ -459,6 +474,7 @@ button:
 
   - platform: safe_mode
     name: "Safe Mode"
+    id: id_safe_mode
     internal: false
     entity_category: config
 
@@ -472,6 +488,7 @@ button:
 
   - platform: template
     name: Restart device
+    id: template_restart_device
     entity_category: config
     on_press:
       - button.press: restart_mmwave
@@ -482,12 +499,15 @@ text_sensor:
   - platform: wifi_info
     ip_address:
       name: "IP Address"
+      id: ip_address
       entity_category: diagnostic
     ssid:
       name: "Connected SSID"
+      id: ssid
       entity_category: diagnostic
     mac_address:
       name: "Mac Address"
+      id: mac_address
       entity_category: diagnostic
 
   #  Creates a sensor showing when the device was last restarted

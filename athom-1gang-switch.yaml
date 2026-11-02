@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.1Gang Switch"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.0.5"
+  project_version: "v3.0.6"
   # Restore the relay (GPO switch) upon reboot to state:
   light_restore_mode: RESTORE_DEFAULT_OFF
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
@@ -85,9 +85,11 @@ esp32:
       CONFIG_ESP_TASK_WDT_TIMEOUT_S: "10"
 
 preferences:
+  id: preferences_component
   flash_write_interval: 1min
 
 api:
+  id: api_component
   # reboot_timeout: 0s
   # Only enable BLE tracking when wifi is up and api is connected
   # Gives single-core ESP32-C3 devices time to manage wifi and authenticate with api
@@ -128,20 +130,25 @@ update:
     # update_interval defaults to 6h (how often it checks, not installs)
 
 logger:
+  id: logger_component
   baud_rate: 0  # 0 Enables logging, but disables serial-port logging to free CPU and memory
   level: ${log_level}
 
 mdns:
+  id: mdns_component
   disabled: false
 
 web_server:
+  id: web_server_component
   port: 80
 #  version: 3
 
 network:
+  id: network_component
   enable_ipv6: ${ipv6_enable}
 
 wifi:
+  id: wifi_component
   # This spawns an AP with the device name and mac address with no password.
   ap: {}
   # Allow rapid re-connection to previously connect WiFi SSID, skipping scan of all SSID
@@ -150,11 +157,14 @@ wifi:
   domain: "${dns_domain}"
 
 captive_portal:
+  id: captive_portal_component
 
 improv_ble:
+  id: improv_ble_component
   authorizer: none
 
 esp32_ble_tracker:
+  id: esp32_ble_tracker_component
   scan_parameters:
     # Don't auto start BLE scanning, we control it in the `api` block's automation.
     continuous: false
@@ -165,6 +175,7 @@ esp32_ble_tracker:
     # required if your device is controlling other sensors or doing PWM for lights etc.
 
 bluetooth_proxy:
+  id: bluetooth_proxy_component
   active: true
 
 dashboard_import:
@@ -190,9 +201,31 @@ select:
         - lambda: |-
             id(restore_mode)=i+1;
 
+  - platform: template
+    name: "Button Mode"
+    id: button_mode
+    entity_category: config
+    optimistic: true
+    restore_value: true
+    initial_option: Relay
+    options:
+      - Relay
+      - Programmable
+
+event:
+  - platform: template
+    name: "Button Event"
+    id: button_event
+    device_class: button
+    event_types:
+      - single_click
+      - double_click
+      - long_press
+
 binary_sensor:
   - platform: status
     name: "Status"
+    id: id_status
     icon: mdi:check-network-outline
     entity_category: diagnostic    
 
@@ -210,15 +243,86 @@ binary_sensor:
     filters:
       - delayed_on_off: 20ms
     on_multi_click:
+      # Keep the original local relay controls in Relay mode.
       - timing:
           - ON for at most 0.5s
           - OFF for at least 0.2s
         then:
-          - light.toggle: light1
+          - if:
+              condition:
+                select.is:
+                  id: button_mode
+                  options: Relay
+              then:
+                - light.toggle: light1
       - timing:
           - ON for at least 4s
         then:
-          - button.press: Reset
+          - if:
+              condition:
+                select.is:
+                  id: button_mode
+                  options: Relay
+              then:
+                - button.press: Reset
+
+      # In Programmable mode, the button reports events without toggling the relay.
+      # Strictly below 1s / 300ms keeps the click and long-press windows separate.
+      - timing:
+          - ON for at most 999ms
+          - OFF for at most 299ms
+          - ON for at most 999ms
+          - OFF for at least 300ms
+        invalid_cooldown: 0s
+        then:
+          - if:
+              condition:
+                select.is:
+                  id: button_mode
+                  options: Programmable
+              then:
+                - event.trigger:
+                    id: button_event
+                    event_type: double_click
+      - timing:
+          - ON for at most 999ms
+          - OFF for at least 300ms
+        invalid_cooldown: 0s
+        then:
+          - if:
+              condition:
+                select.is:
+                  id: button_mode
+                  options: Programmable
+              then:
+                - event.trigger:
+                    id: button_event
+                    event_type: single_click
+      - timing:
+          - ON for at least 1s
+        invalid_cooldown: 0s
+        then:
+          - if:
+              condition:
+                select.is:
+                  id: button_mode
+                  options: Programmable
+              then:
+                - event.trigger:
+                    id: button_event
+                    event_type: long_press
+      # Keep a physical recovery gesture, with extra time for programmable holds.
+      - timing:
+          - ON for at least 10s
+        invalid_cooldown: 0s
+        then:
+          - if:
+              condition:
+                select.is:
+                  id: button_mode
+                  options: Programmable
+              then:
+                - button.press: Reset
 
 sensor:
   - platform: uptime
@@ -237,6 +341,7 @@ sensor:
   - platform: copy
     source_id: wifi_signal_db
     name: "WiFi Signal Percent"
+    id: wifi_signal_percent
     filters:
       - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
     unit_of_measurement: "Signal %"
@@ -246,6 +351,7 @@ sensor:
 button:
   - platform: restart
     name: "Restart"
+    id: id_restart
     entity_category: config
 
   - platform: factory_reset
@@ -255,6 +361,7 @@ button:
 
   - platform: safe_mode
     name: "Safe Mode"
+    id: id_safe_mode
     internal: false
     entity_category: config
 
@@ -301,14 +408,17 @@ text_sensor:
   - platform: wifi_info
     ip_address:
       name: "IP Address"
+      id: ip_address
       icon: mdi:ip-network
       entity_category: diagnostic
     ssid:
       name: "Connected SSID"
+      id: ssid
       icon: mdi:wifi-strength-2
       entity_category: diagnostic
     mac_address:
       name: "Mac Address"
+      id: mac_address
       icon: mdi:network-pos
       entity_category: diagnostic
 

@@ -48,6 +48,7 @@ esp32:
 
 # Enable Home Assistant API
 api:
+  id: api_component
   reboot_timeout: 0s
   on_client_connected:
      - esp32_ble_tracker.start_scan:
@@ -70,16 +71,19 @@ dashboard_import:
   package_import_url: github://athom-tech/esp32-configs/athom-zigbee-gateway.yaml
 
 esp32_ble_tracker:
+  id: esp32_ble_tracker_component
   scan_parameters:
     interval: 320ms
     window: 320ms
     active: true
 
 bluetooth_proxy:
+  id: bluetooth_proxy_component
   active: true
 
 #WT32-ETH01 Ethernet
 ethernet:
+  id: ethernet_component
   type: LAN8720
   mdc_pin: GPIO23
   mdio_pin: GPIO18
@@ -100,6 +104,7 @@ ethernet:
 
 # Enable logging
 logger:
+  id: logger_component
   baud_rate: 115200
   level: ${log_level}
 
@@ -128,6 +133,7 @@ update:
     # update_interval defaults to 6h (how often it checks, not installs)
 
 web_server:
+  id: web_server_component
   port: 80
   local: True
 
@@ -147,6 +153,7 @@ switch:
 
   - platform: template
     name: "Prep the cc2652p2 for firmware update"
+    id: template_prep_the_cc2652p2_for_firmware_update
     turn_on_action:
       - script.execute: fw_update_mode
     turn_off_action:
@@ -155,6 +162,7 @@ switch:
 button:
   - platform: restart
     name: "Restart the Device"
+    id: id_restart
 
   - platform: template
     name: "Zigbee Module Restart"
@@ -179,12 +187,15 @@ binary_sensor:
   - platform: stream_server
     connected:
       name: "AthomZB Serial Connected"
+      id: stream_server_athomzb_serial_connected
 
   - platform: status
     name: "Status"
+    id: id_status
     entity_category: diagnostic
 
 mdns:
+  id: mdns_component
   services:
     - service: "_athomzb"
       protocol: "_tcp"

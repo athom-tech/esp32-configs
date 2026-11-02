@@ -54,14 +54,17 @@ esp32:
 
 # Enable logging
 logger:
+  id: logger_component
   baud_rate: 115200
   hardware_uart: UART0
   level: ${log_level}
 
 mdns:
+  id: mdns_component
   disabled: false
 
 web_server:
+  id: web_server_component
   port: 80
 
 ota:
@@ -89,9 +92,11 @@ update:
     # update_interval defaults to 6h (how often it checks, not installs)
 
 network:
+  id: network_component
   enable_ipv6: ${ipv6_enable}
 
 wifi:
+  id: wifi_component
   # This spawns an AP with the device name and mac address with no password.
   ap: {}
   # Allow rapid re-connection to previously connect WiFi SSID, skipping scan of all SSID
@@ -100,8 +105,10 @@ wifi:
   domain: "${dns_domain}"
 
 captive_portal:
+  id: captive_portal_component
 
 esp32_ble_tracker:
+  id: esp32_ble_tracker_component
   scan_parameters:
     # Don't auto start BLE scanning, we control it in the `api` block's automation.
     continuous: false
@@ -113,6 +120,7 @@ esp32_ble_tracker:
 
 # Enable Home Assistant API
 api:
+  id: api_component
   on_client_connected:
     - esp32_ble_tracker.start_scan:
        continuous: true
@@ -120,9 +128,11 @@ api:
     - esp32_ble_tracker.stop_scan:
 
 bluetooth_proxy:
+  id: bluetooth_proxy_component
   active: true
 
 improv_ble:
+  id: improv_ble_component
   authorizer: none
 
 dashboard_import:
@@ -138,6 +148,7 @@ light:
 
 i2c:
   sda: GPIO18
+  id: i2c_bus
   scl: GPIO19
   scan: true
 
@@ -155,12 +166,15 @@ ld2450:
 
 button:
   - platform: ld2450
+    id: ld2450_button
     ld2450_id: ld2450_radar
     factory_reset:
       name: "LD2450 Factory Reset"
+      id: ld2450_ld2450_factory_reset
       entity_category: "config"
     restart:
       name: "LD2450 Restart"
+      id: ld2450_ld2450_restart
       entity_category: "config"
 
   - platform: factory_reset
@@ -175,11 +189,13 @@ button:
 
   - platform: safe_mode
     name: "Safe Mode"
+    id: id_safe_mode
     internal: false
     entity_category: config
 
 sensor:
   - platform: ld2450
+    id: ld2450_sensor
     ld2450_id: ld2450_radar
     target_count:
       name: Presence Target Count
@@ -294,6 +310,7 @@ sensor:
   - platform: copy
     source_id: wifi_signal_db
     name: "WiFi Signal Percent"
+    id: wifi_signal_percent
     filters:
       - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
     unit_of_measurement: "Signal %"
@@ -308,16 +325,21 @@ sensor:
 
 binary_sensor:
   - platform: ld2450
+    id: ld2450_binary_sensor
     ld2450_id: ld2450_radar
     has_target:
       name: Presence
+      id: ld2450_presence
     has_moving_target:
       name: Moving Target
+      id: ld2450_moving_target
     has_still_target:
       name: Still Target
+      id: ld2450_still_target
 
   - platform: status
     name: "Status"
+    id: id_status
     entity_category: diagnostic
 
   - platform: gpio
@@ -326,6 +348,7 @@ binary_sensor:
       mode: INPUT_PULLUP
       inverted: true
     name: "Button"
+    id: gpio_button
     disabled_by_default: true
     filters:
       - delayed_on_off: 20ms
@@ -350,38 +373,50 @@ binary_sensor:
 
 switch:
   - platform: ld2450
+    id: ld2450_switch
     ld2450_id: ld2450_radar
     bluetooth:
       name: "Bluetooth"
+      id: ld2450_bluetooth
     multi_target:
       name: "Multi Target Tracking"
+      id: ld2450_multi_target_tracking
 
 text_sensor:
   - platform: ld2450
+    id: ld2450_text_sensor
     ld2450_id: ld2450_radar
     version:
       name: "LD2450 Firmware"
+      id: ld2450_ld2450_firmware
     mac_address:
       name: "LD2450 BT MAC"
+      id: ld2450_ld2450_bt_mac
     target_1:
       direction:
         name: "Target-1 Direction"
+        id: ld2450_target_1_direction
     target_2:
       direction:
         name: "Target-2 Direction"
+        id: ld2450_target_2_direction
     target_3:
       direction:
         name: "Target-3 Direction"
+        id: ld2450_target_3_direction
 
   - platform: wifi_info
     ip_address:
       name: "IP Address"
+      id: ip_address
       entity_category: diagnostic
     ssid:
       name: "Connected SSID"
+      id: ssid
       entity_category: diagnostic
     mac_address:
       name: "Mac Address"
+      id: mac_address
       entity_category: diagnostic
 
   #  Creates a sensor showing when the device was last restarted
@@ -394,44 +429,61 @@ text_sensor:
 
 number:
   - platform: ld2450
+    id: ld2450_number
     ld2450_id: ld2450_radar
     presence_timeout:
       name: "Timeout"
+      id: ld2450_timeout
     zone_1:
       x1:
         name: Zone-1 X1
+        id: ld2450_zone_1_x1
       y1:
         name: Zone-1 Y1
+        id: ld2450_zone_1_y1
       x2:
         name: Zone-1 X2
+        id: ld2450_zone_1_x2
       y2:
         name: Zone-1 Y2
+        id: ld2450_zone_1_y2
     zone_2:
       x1:
         name: Zone-2 X1
+        id: ld2450_zone_2_x1
       y1:
         name: Zone-2 Y1
+        id: ld2450_zone_2_y1
       x2:
         name: Zone-2 X2
+        id: ld2450_zone_2_x2
       y2:
         name: Zone-2 Y2
+        id: ld2450_zone_2_y2
     zone_3:
       x1:
         name: Zone-3 X1
+        id: ld2450_zone_3_x1
       y1:
         name: Zone-3 Y1
+        id: ld2450_zone_3_y1
       x2:
         name: Zone-3 X2
+        id: ld2450_zone_3_x2
       y2:
         name: Zone-3 Y2
+        id: ld2450_zone_3_y2
 
 select:
   - platform: ld2450
+    id: ld2450_select
     ld2450_id: ld2450_radar
     baud_rate:
       name: "Baud rate"
+      id: ld2450_baud_rate
     zone_type:
       name: "Zone Type"
+      id: ld2450_zone_type
 
 time:
   - platform: sntp

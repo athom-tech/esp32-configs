@@ -137,6 +137,89 @@ If OTA fails, confirm that:
 - Presence and LD2450-based devices expose target, zone, presence, illuminance, and radar control entities.
 - Devices are expected to be discovered by Home Assistant through the ESPHome integration after they are on the network.
 
+### Taking Control: Extending or Removing Configuration
+
+Each device configuration gives explicit IDs to its entities and components wherever the ESPHome schema supports them, including internal entities, nested sensor outputs, I2C/UART buses, and services. These are ESPHome configuration IDs, separate from Home Assistant entity IDs. Existing IDs retain their original spelling and capitalization; an ID only needs to be unique within one device's configuration.
+
+After taking control, keep your changes in the configuration that imports the Athom package. Find the exact ID in your device's YAML and use `!extend` or `!remove` for list entries. For example, this renames the Wi-Fi percentage sensor and removes the restart button from a smart plug:
+
+```yaml
+packages:
+  athom: !include athom-smart-plug.yaml
+
+sensor:
+  - id: !extend wifi_signal_percent
+    name: "WiFi Signal Percentage"
+
+button:
+  - id: !remove id_restart
+```
+
+The local `!include` example assumes the device YAML is beside your configuration. If your configuration already imports the package, keep that existing import instead.
+
+For nested outputs, extend the parent component and edit or remove the child by its configuration key. Add this to the same smart-plug configuration to rename its current sensor and remove its power-factor sensor:
+
+```yaml
+sensor:
+  - id: !extend athom_cse7766
+    current:
+      name: "Current Draw"
+    power_factor: !remove
+```
+
+Combine entries under one `sensor:` key when using both examples. Mapping-style services merge by their top-level key: for example, `web_server: {port: 8080}` changes the port, and `web_server: !remove` removes that service. Configuration groups and platform wrappers that do not accept an `id` keep their schema-defined structure.
+
+Common IDs include `id_status`, `wifi_signal_percent`, `id_restart`, `id_safe_mode`, `ip_address`, `ssid`, and `mac_address`. Previously unnamed buses use `i2c_bus` or `uart_bus`; services use IDs such as `api_component` and `wifi_component`. Existing bus and entity IDs may differ between devices, so always check the selected YAML.
+
+When removing an entity or component, also remove or update anything that depends on it, such as `id(...)` lambdas, automation actions, `source_id`, `power_id`, or bus references. Removing a bus also requires handling the peripherals that use it. Validate your final configuration with `esphome config <your-device>.yaml`. See the [ESPHome packages documentation](https://esphome.io/components/packages/) for the supported merge, extension, and removal syntax.
+
+### Wall Switches: Programmable Button Mode
+
+The one-, two-, three-, and four-gang switch configurations expose button mode selectors in Home Assistant and the device's web interface. Each physical button has its own mode selector and event entity:
+
+| Configuration | Mode selectors | Event entities |
+| --- | --- | --- |
+| `athom-1gang-switch.yaml` | **Button Mode** | **Button Event** |
+| `athom-2gang-switch.yaml` | **Button1 Mode**, **Button2 Mode** | **Button1 Event**, **Button2 Event** |
+| `athom-3gang-switch.yaml` | **Button1 Mode** through **Button3 Mode** | **Button1 Event** through **Button3 Event** |
+| `athom-4gang-switch.yaml` | **Button1 Mode** through **Button4 Mode** | **Button1 Event** through **Button4 Event** |
+
+Every button defaults to **Relay**, which keeps the existing behavior: a short press (up to 0.5 seconds, followed by at least 0.2 seconds released) toggles that button's corresponding relay, and holding it for 4 seconds triggers a factory reset. Each selected mode is saved independently and restored after reboot, subject to the existing 1-minute flash-write interval.
+
+Select **Programmable** for a button to use it for Home Assistant automations. Switching modes leaves all relay states unchanged. In this mode that button does not directly control its relay; the existing **Light** or **LightN** entity still controls it independently. Modes can be mixed: for example, **Button1 Mode** can remain **Relay** while **Button2 Mode** is **Programmable**. Pressing Button1 then toggles relay 1, while Button2 reports events without toggling relay 2. Buttons recognize gestures independently, including when different buttons are operated at the same time.
+
+Each button's event entity is enabled by default and reports these event types only while that button is in Programmable mode:
+
+| Gesture | Event type | Timing |
+| --- | --- | --- |
+| Single click | `single_click` | Press for less than 1 second, then release for 300 ms without a second press. |
+| Double click | `double_click` | Two presses of less than 1 second each, separated by less than 300 ms; reported after the final release has lasted 300 ms. No single-click event is emitted. |
+| Long press | `long_press` | Reported once when the button has been held for 1 second. Releasing it does not emit a click. |
+
+In Programmable mode, continuing to hold the button for **10 seconds** triggers a factory reset; the long-press event is still emitted at 1 second. A factory reset applies to the **entire device**, whether triggered by a Relay-mode button held for 4 seconds or a Programmable-mode button held for 10 seconds. The **Factory Reset** entity also remains available.
+
+ESPHome event entities require **Home Assistant Core 2024.5 or newer**. The entity state is the timestamp of its latest event, and its `event_type` attribute identifies the gesture. Consecutive identical gestures update the timestamp each time. See the [ESPHome event documentation](https://esphome.io/components/event/) and [Home Assistant event documentation](https://www.home-assistant.io/integrations/event/).
+
+On current Home Assistant releases, use the **Event received** trigger and select the desired event type. For example, this automation activates a scene on a double click of Button2 on a multi-gang switch. Replace the event entity ID and scene with your own; select the corresponding **Button Event** entity for a single-gang switch:
+
+```yaml
+automation:
+  - alias: "Wall Switch Button2 double click"
+    triggers:
+      - trigger: event.received
+        target:
+          entity_id: event.your_switch_button2_event
+        options:
+          event_type:
+            - double_click
+    actions:
+      - action: scene.turn_on
+        target:
+          entity_id: scene.your_scene
+```
+
+On older Home Assistant releases without the **Event received** trigger, trigger on the event entity's timestamp changing and inspect `event_type` in a condition. Triggering only on a change of the `event_type` attribute would miss consecutive identical gestures.
+
 ## Troubleshooting
 
 ### Browser or USB Device Is Not Detected

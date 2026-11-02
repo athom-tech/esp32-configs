@@ -68,9 +68,11 @@ esp32:
       CONFIG_ESP_TASK_WDT_TIMEOUT_S: "10"
 
 preferences:
+  id: preferences_component
   flash_write_interval: 5min
 
 api:
+  id: api_component
   # reboot_timeout: 0s
   # Only enable BLE tracking when wifi is up and api is connected
   # Gives single-core ESP32-C3 devices time to manage wifi and authenticate with api
@@ -111,19 +113,24 @@ update:
     # update_interval defaults to 6h (how often it checks, not installs)
 
 logger:
+  id: logger_component
   baud_rate: 0  # 0 Enables logging, but disables serial-port logging to free CPU and memory
   level: ${log_level}
 
 mdns:
+  id: mdns_component
   disabled: false
 
 web_server:
+  id: web_server_component
   port: 80
 
 network:
+  id: network_component
   enable_ipv6: ${ipv6_enable}
 
 wifi:
+  id: wifi_component
   # This spawns an AP with the device name and mac address with no password.
   ap: {}
   # Allow rapid re-connection to previously connect WiFi SSID, skipping scan of all SSID
@@ -132,11 +139,14 @@ wifi:
   domain: "${dns_domain}"
 
 captive_portal:
+  id: captive_portal_component
 
 improv_ble:
+  id: improv_ble_component
   authorizer: none
 
 esp32_ble_tracker:
+  id: esp32_ble_tracker_component
   scan_parameters:
     # Don't auto start BLE scanning, we control it in the `api` block's automation.
     continuous: false
@@ -147,6 +157,7 @@ esp32_ble_tracker:
     # required if your device is controlling other sensors or doing PWM for lights etc.
 
 bluetooth_proxy:
+  id: bluetooth_proxy_component
   active: true
 
 dashboard_import:
@@ -154,6 +165,7 @@ dashboard_import:
 
 uart:
   rx_pin: GPIO20
+  id: uart_bus
   baud_rate: 4800
   data_bits: 8
   stop_bits: 1
@@ -168,6 +180,7 @@ globals:
 binary_sensor:
   - platform: status
     name: "Status"
+    id: id_status
     entity_category: diagnostic    
 
   - platform: gpio
@@ -232,6 +245,7 @@ sensor:
   - platform: copy
     source_id: wifi_signal_db
     name: "WiFi Signal Percent"
+    id: wifi_signal_percent
     filters:
       - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
     unit_of_measurement: "Signal %"
@@ -242,6 +256,7 @@ sensor:
     id: athom_cse7766
     current:
       name: "Current"
+      id: cse7766_current
       filters:
         - throttle_average: ${sensor_update_interval}
         - lambda: if (x < 0.060) return 0.0; else return x;   #For the chip will report less than 3w power when no load is connected
@@ -252,6 +267,7 @@ sensor:
 
     voltage:
       name: "Voltage"
+      id: cse7766_voltage
       filters:
         - throttle_average: ${sensor_update_interval}
 
@@ -281,14 +297,17 @@ sensor:
 
     apparent_power:
       name: "Apparent Power"
+      id: cse7766_apparent_power
       filters:
         - throttle_average: ${sensor_update_interval}
     reactive_power:
       name: "Reactive Power"
+      id: cse7766_reactive_power
       filters:
         - throttle_average: ${sensor_update_interval}
     power_factor:
       name: "Power Factor"
+      id: cse7766_power_factor
       filters:
         - throttle_average: ${sensor_update_interval}
 
@@ -306,6 +325,7 @@ sensor:
 
   - platform: total_daily_energy
     name: "Total Energy Today"
+    id: total_daily_energy_total_energy_today
     restore: true
     power_id: power_sensor
     unit_of_measurement: kWh
@@ -316,6 +336,7 @@ sensor:
 button:
   - platform: restart
     name: "Restart"
+    id: id_restart
     entity_category: config
 
   - platform: factory_reset
@@ -325,11 +346,13 @@ button:
 
   - platform: safe_mode
     name: "Safe Mode"
+    id: id_safe_mode
     internal: false
     entity_category: config
 
   - platform: template
     name: "Reset Total Energy"
+    id: template_reset_total_energy
     icon: mdi:restart-alert
     entity_category: config
     on_press:
@@ -366,12 +389,15 @@ text_sensor:
   - platform: wifi_info
     ip_address:
       name: "IP Address"
+      id: ip_address
       entity_category: diagnostic
     ssid:
       name: "Connected SSID"
+      id: ssid
       entity_category: diagnostic
     mac_address:
       name: "Mac Address"
+      id: mac_address
       entity_category: diagnostic
 
   #  Creates a sensor showing when the device was last restarted

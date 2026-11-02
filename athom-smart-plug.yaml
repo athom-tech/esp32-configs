@@ -95,9 +95,11 @@ esp32:
       CONFIG_ESP_TASK_WDT_TIMEOUT_S: "10"
 
 preferences:
+  id: preferences_component
   flash_write_interval: 5min
 
 api:
+  id: api_component
   # reboot_timeout: 0s
   # Only enable BLE tracking when wifi is up and api is connected
   # Gives single-core ESP32-C3 devices time to manage wifi and authenticate with api
@@ -138,20 +140,25 @@ update:
     # update_interval defaults to 6h (how often it checks, not installs)
 
 logger:
+  id: logger_component
   baud_rate: 0  # 0 Enables logging, but disables serial-port logging to free CPU and memory
   level: ${log_level}
 
 mdns:
+  id: mdns_component
   disabled: false
 
 web_server:
+  id: web_server_component
   port: 80
 #  version: 3
 
 network:
+  id: network_component
   enable_ipv6: ${ipv6_enable}
 
 wifi:
+  id: wifi_component
   # This spawns an AP with the device name and mac address with no password.
   ap: {}
   # Allow rapid re-connection to previously connect WiFi SSID, skipping scan of all SSID
@@ -160,11 +167,14 @@ wifi:
   domain: "${dns_domain}"
 
 captive_portal:
+  id: captive_portal_component
 
 improv_ble:
+  id: improv_ble_component
   authorizer: none
 
 esp32_ble_tracker:
+  id: esp32_ble_tracker_component
   scan_parameters:
     # Don't auto start BLE scanning, we control it in the `api` block's automation.
     continuous: false
@@ -175,6 +185,7 @@ esp32_ble_tracker:
     # required if your device is controlling other sensors or doing PWM for lights etc.
 
 bluetooth_proxy:
+  id: bluetooth_proxy_component
   active: true
 
 dashboard_import:
@@ -280,6 +291,7 @@ sensor:
     id: athom_cse7766
     current:
       name: "Current"
+      id: cse7766_current
       icon: mdi:current-ac
       filters:
         - throttle_average: ${sensor_update_interval}
@@ -290,6 +302,7 @@ sensor:
 
     voltage:
       name: "Voltage"
+      id: cse7766_voltage
       icon: mdi:sine-wave
       filters:
         - throttle_average: ${sensor_update_interval}
@@ -321,18 +334,21 @@ sensor:
 
     apparent_power:
       name: "Apparent Power"
+      id: cse7766_apparent_power
       icon: mdi:power
       filters:
         - throttle_average: ${sensor_update_interval}
 
     reactive_power:
       name: "Reactive Power"
+      id: cse7766_reactive_power
       icon: mdi:flash
       filters:
         - throttle_average: ${sensor_update_interval}
 
     power_factor:
       name: "Power Factor"
+      id: cse7766_power_factor
       icon: mdi:percent-outline
       filters:
         - throttle_average: ${sensor_update_interval}
@@ -379,6 +395,7 @@ button:
 
   - platform: template
     name: "Reset Total Energy"
+    id: template_reset_total_energy
     icon: mdi:restart-alert
     entity_category: config
     on_press:
@@ -418,14 +435,17 @@ text_sensor:
   - platform: wifi_info
     ip_address:
       name: "IP Address"
+      id: ip_address
       icon: mdi:ip-network
       entity_category: diagnostic
     ssid:
       name: "Connected SSID"
+      id: ssid
       icon: mdi:wifi-strength-2
       entity_category: diagnostic
     mac_address:
       name: "Mac Address"
+      id: mac_address
       icon: mdi:network-pos
       entity_category: diagnostic
 

@@ -65,9 +65,11 @@ esp32:
       CONFIG_ESP_TASK_WDT_TIMEOUT_S: "10"
 
 preferences:
+  id: preferences_component
   flash_write_interval: 5min
 
 api:
+  id: api_component
   # reboot_timeout: 0s
   # Only enable BLE tracking when wifi is up and api is connected
   # Gives single-core ESP32-C3 devices time to manage wifi and authenticate with api
@@ -108,32 +110,41 @@ update:
     # update_interval defaults to 6h (how often it checks, not installs)
 
 logger:
+  id: logger_component
   baud_rate: 115200
   level: ${log_level}
   hardware_uart: UART0
 
 mdns:
+  id: mdns_component
   disabled: false
 
 web_server:
+  id: web_server_component
   port: 80
 
 network:
+  id: network_component
   enable_ipv6: ${ipv6_enable}
 
 wifi:
+  id: wifi_component
   ap: {}
   fast_connect: "${wifi_fast_connect}"
   domain: "${dns_domain}"
 
 captive_portal:
+  id: captive_portal_component
 
 improv_serial:
+  id: improv_serial_component
 
 improv_ble:
+  id: improv_ble_component
   authorizer: none
 
 esp32_ble_tracker:
+  id: esp32_ble_tracker_component
   scan_parameters:
     # Don't auto start BLE scanning, we control it in the `api` block's automation.
     continuous: false
@@ -144,6 +155,7 @@ esp32_ble_tracker:
     # required if your device is controlling other sensors or doing PWM for lights etc.
 
 bluetooth_proxy:
+  id: bluetooth_proxy_component
   active: true
 
 dashboard_import:
@@ -193,6 +205,7 @@ light:
 binary_sensor:
   - platform: status
     name: "Status"
+    id: id_status
     entity_category: diagnostic
 
   - platform: gpio
@@ -228,6 +241,7 @@ sensor:
   - platform: copy
     source_id: wifi_signal_db
     name: "WiFi Signal Percent"
+    id: wifi_signal_percent
     filters:
       - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
     unit_of_measurement: "Signal %"
@@ -348,6 +362,7 @@ sensor:
 button:
   - platform: restart
     name: "Restart"
+    id: id_restart
     entity_category: config
 
   - platform: factory_reset
@@ -357,11 +372,13 @@ button:
 
   - platform: safe_mode
     name: "Safe Mode"
+    id: id_safe_mode
     internal: false
     entity_category: config
 
   - platform: template
     name: Reset Energy
+    id: template_reset_energy
     entity_category: config
     on_press:
       then:

@@ -54,21 +54,26 @@ esp32:
       CONFIG_ESP_TASK_WDT_TIMEOUT_S: "10"
 
 preferences:
+  id: preferences_component
   flash_write_interval: 5min
 
 # Enable logging
 logger:
+  id: logger_component
   baud_rate: 115200
   level: ${log_level}
 
 mdns:
+  id: mdns_component
   disabled: false
 
 web_server:
+  id: web_server_component
   port: 80
 
 # Enable Home Assistant API
 api:
+  id: api_component
   on_client_connected:
      - esp32_ble_tracker.start_scan:
         continuous: true
@@ -106,9 +111,11 @@ update:
     # update_interval defaults to 6h (how often it checks, not installs)
 
 network:
+  id: network_component
   enable_ipv6: ${ipv6_enable}
 
 wifi:
+  id: wifi_component
   # This spawns an AP with the device name and mac address with no password.
   ap: {}
   # Allow rapid re-connection to previously connect WiFi SSID, skipping scan of all SSID
@@ -117,13 +124,17 @@ wifi:
   domain: "${dns_domain}"
 
 captive_portal:
+  id: captive_portal_component
 
 improv_serial:
+  id: improv_serial_component
 
 improv_ble:
+  id: improv_ble_component
   authorizer: none
 
 esp32_ble_tracker:
+  id: esp32_ble_tracker_component
   scan_parameters:
     # Don't auto start BLE scanning, we control it in the `api` block's automation.
     continuous: false
@@ -134,6 +145,7 @@ esp32_ble_tracker:
     # required if your device is controlling other sensors or doing PWM for lights etc.
 
 bluetooth_proxy:
+  id: bluetooth_proxy_component
   active: true
 
 dashboard_import:
@@ -147,6 +159,7 @@ remote_receiver:
 binary_sensor:
   - platform: status
     name: "Status"
+    id: id_status
     entity_category: "diagnostic"
 
   - platform: gpio
@@ -251,6 +264,7 @@ sensor:
   - platform: copy # Reports the WiFi signal strength in %
     source_id: wifi_signal_db
     name: "WiFi Signal Percent"
+    id: wifi_signal_percent
     filters:
       - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
     unit_of_measurement: "Signal %"
@@ -260,6 +274,7 @@ sensor:
 button:
   - platform: restart
     name: "Restart"
+    id: id_restart
     entity_category: "config"
 
   - platform: factory_reset
@@ -269,6 +284,7 @@ button:
 
   - platform: safe_mode
     name: "Safe Mode"
+    id: id_safe_mode
     internal: false
     entity_category: "config"
 
@@ -301,6 +317,7 @@ switch:
 light:
   - platform: status_led
     name: "Status LED"
+    id: blue_led
     disabled_by_default: true
     pin: GPIO15
 
@@ -308,12 +325,15 @@ text_sensor:
   - platform: wifi_info
     ip_address:
       name: "IP Address"
+      id: ip_address
       entity_category: "diagnostic"
     ssid:
       name: "Connected SSID"
+      id: ssid
       entity_category: "diagnostic"
     mac_address:
       name: "Mac Address"
+      id: mac_address
       entity_category: "diagnostic"
 
   #  Creates a sensor showing when the device was last restarted

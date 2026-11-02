@@ -68,6 +68,7 @@ esp32:
       CONFIG_ESP_TASK_WDT_TIMEOUT_S: "10"
 
 preferences:
+  id: preferences_component
   flash_write_interval: 1min
 
 # Global variables for IR learning
@@ -110,6 +111,7 @@ Flash_comp:
   id: signal_nvs
 
 api:
+  id: api_component
   reboot_timeout: 0s
   # Only enable BLE tracking when wifi is up and api is connected
   # Gives single-core ESP32-C3 devices time to manage wifi and authenticate with api
@@ -150,20 +152,25 @@ update:
     # update_interval defaults to 6h (how often it checks, not installs)
 
 logger:
+  id: logger_component
   baud_rate: 0
   level: ${log_level}
 
 mdns:
+  id: mdns_component
   disabled: false
 
 web_server:
+  id: web_server_component
   port: 80
   version: 3
 
 network:
+  id: network_component
   enable_ipv6: ${ipv6_enable}
 
 wifi:
+  id: wifi_component
   # This spawns an AP with the device name and mac address with no password.
   ap: {}
   # Allow rapid re-connection to previously connect WiFi SSID, skipping scan of all SSID
@@ -172,6 +179,7 @@ wifi:
   domain: "${dns_domain}"
 
 esp32_ble_tracker:
+  id: esp32_ble_tracker_component
   scan_parameters:
     # Don't auto start BLE scanning, we control it in the `api` block's automation.
     continuous: false
@@ -182,11 +190,14 @@ esp32_ble_tracker:
     # required if your device is controlling other sensors or doing PWM for lights etc.
 
 bluetooth_proxy:
+  id: bluetooth_proxy_component
   active: true
 
 captive_portal:
+  id: captive_portal_component
 
 improv_ble:
+  id: improv_ble_component
   authorizer: none
 
 dashboard_import:
@@ -295,6 +306,7 @@ climate:
 binary_sensor:
   - platform: status
     name: "Status"
+    id: id_status
     entity_category: "diagnostic"
 
   - platform: gpio
@@ -331,6 +343,7 @@ sensor:
   - platform: copy
     source_id: wifi_signal_db
     name: "WiFi Signal Percent"
+    id: wifi_signal_percent
     filters:
       - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
     unit_of_measurement: "Signal %"
@@ -340,6 +353,7 @@ sensor:
   - platform: debug
     free:
       name: "Heap Free"
+      id: debug_heap_free
       unit_of_measurement: "KiB"
       accuracy_decimals: 1
       filters:
@@ -348,6 +362,7 @@ sensor:
 button:
   - platform: restart
     name: "Restart"
+    id: id_restart
     entity_category: config
 
   - platform: factory_reset
@@ -357,12 +372,14 @@ button:
 
   - platform: safe_mode
     name: "Safe Mode"
+    id: id_safe_mode
     internal: false
     entity_category: config
 
   # IR learning button
   - platform: template
     name: "IR Learn"
+    id: template_ir_learn
     icon: mdi:remote-tv
     on_press:
       - lambda: |-
@@ -373,6 +390,7 @@ button:
   # IR send button
   - platform: template
     name: "IR Send"
+    id: template_ir_send
     icon: mdi:send
     on_press:
       - script.execute: send_raw_signal
@@ -380,6 +398,7 @@ button:
   # Clear the signal in the current slot
   - platform: template
     name: "IR Clear Slot"
+    id: template_ir_clear_slot
     icon: mdi:delete
     on_press:
       - lambda: |-
@@ -391,6 +410,7 @@ button:
   # RF433 learning button
   - platform: template
     name: "RF Learn"
+    id: template_rf_learn
     icon: mdi:remote
     on_press:
       - lambda: |-
@@ -401,6 +421,7 @@ button:
   # RF433 send button
   - platform: template
     name: "RF Send"
+    id: template_rf_send
     icon: mdi:send
     on_press:
       - script.execute: send_raw_rf_signal
@@ -408,6 +429,7 @@ button:
   # Clear the RF signal in the current slot
   - platform: template
     name: "RF Clear Slot"
+    id: template_rf_clear_slot
     icon: mdi:delete
     on_press:
       - lambda: |-
@@ -419,9 +441,11 @@ button:
 light:
   - platform: status_led
     name: "Status LED"
+    id: blue_led
     disabled_by_default: true
     pin: ${LED_PIN}
 debug:
+  id: debug_component
   update_interval: 5s
 
 text_sensor:
@@ -460,6 +484,7 @@ text_sensor:
   - platform: debug
     reset_reason:
       name: "Reset Reason"
+      id: debug_reset_reason
 
 # Signal slot selector
 select:
