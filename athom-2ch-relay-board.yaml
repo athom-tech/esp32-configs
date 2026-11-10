@@ -4,7 +4,7 @@ substitutions:
   room: ""
   device_description: "athom esp32 2ch relay board"
   project_name: "Athom Technology.ESP32 2CH Relay Board"
-  project_version: "v2.0.9"
+  project_version: "v2.0.10"
   update_interval: 60s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
@@ -35,12 +35,11 @@ esphome:
   project:
     name: "${project_name}"
     version: "${project_version}"
-  platformio_options:
-    board_build.flash_mode: dio
 
 esp32:
   board: esp32dev
   flash_size: 4MB
+  flash_mode: dio
   framework:
     type: esp-idf
     version: recommended

@@ -5,7 +5,7 @@ substitutions:
   room: ""
   device_description: "athom sht40 temperature and humidity sensor"
   project_name: "China Athom Technology.Temperature Humidity Sensor"
-  project_version: "1.0.11"
+  project_version: "1.0.12"
   update_interval: 5s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
@@ -43,8 +43,6 @@ esphome:
   project:
     name: "${project_name}"
     version: "${project_version}"
-  platformio_options:
-    board_build.flash_mode: dio
   on_boot:
     priority: 800
     then:
@@ -59,6 +57,7 @@ esphome:
 esp32:
   board: esp32-c3-devkitm-1
   flash_size: 4MB
+  flash_mode: dio
   variant: ESP32C3
   framework:
     type: esp-idf

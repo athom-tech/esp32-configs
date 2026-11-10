@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom USB Switch"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v2.0.1"
+  project_version: "v2.0.2"
   # Restore the relay (GPO switch) upon reboot to state:
   relay_restore_mode: RESTORE_DEFAULT_ON
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
@@ -51,10 +51,6 @@ esphome:
   project:
     name: "${project_name}"
     version: "${project_version}"
-  platformio_options:
-    board_build.mcu: esp32c6
-    board_build.variant: esp32c6
-    board_build.flash_mode: dio
   on_boot:
     - priority: 600
       then:
@@ -82,6 +78,7 @@ esphome:
 esp32:
   board: esp32-c6-devkitm-1
   flash_size: 4MB
+  flash_mode: dio
   variant: ESP32C6
   framework:
     type: esp-idf

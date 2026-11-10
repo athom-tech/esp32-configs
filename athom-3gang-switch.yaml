@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.3Gang Switch"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v3.0.6"
+  project_version: "v3.0.7"
   # Restore the relay (GPO switch) upon reboot to state:
   light1_restore_mode: RESTORE_DEFAULT_OFF
   light2_restore_mode: RESTORE_DEFAULT_OFF
@@ -43,10 +43,6 @@ esphome:
   project:
     name: "${project_name}"
     version: "${project_version}"
-  platformio_options:
-    board_build.mcu: esp32c3
-    board_build.variant: esp32c3
-    board_build.flash_mode: dio
   on_boot:
     - priority: 600
       then:
@@ -77,6 +73,7 @@ esphome:
 esp32:
   board: esp32-c3-devkitm-1
   flash_size: 4MB
+  flash_mode: dio
   variant: ESP32C3
   framework:
     type: esp-idf

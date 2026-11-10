@@ -4,7 +4,7 @@ substitutions:
   room: ""
   device_description: "athom esp32c3 ld2450 motion target tracking sensor"
   project_name: "China Athom Technology.PS02C3MZ LD2450"
-  project_version: "v2.0.8"
+  project_version: "v2.0.9"
   update_interval: 60s
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ""
@@ -33,12 +33,11 @@ esphome:
   project:
     name: "${project_name}"
     version: "${project_version}"
-  platformio_options:
-    board_build.flash_mode: dio
 
 esp32:
   board: esp32-c3-devkitm-1
   flash_size: 4MB
+  flash_mode: dio
   variant: ESP32C3
   framework:
     type: esp-idf
