@@ -576,7 +576,7 @@ script:
               if (i % 2 == 0) {
                 data->mark(signal_data[i]);
               } else {
-                data->space(signal_data[i]);
+                data->space(-signal_data[i]);
               }
             }
             transmit.perform();
