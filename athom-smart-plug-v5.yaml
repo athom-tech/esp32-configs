@@ -10,7 +10,7 @@ substitutions:
   # Project Name
   project_name: "China Athom Technology.Athom Plug V5"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v5.0.8"
+  project_version: "v5.0.9"
   # Restore the relay (GPO switch) upon reboot to state:
   relay_restore_mode: RESTORE_DEFAULT_ON
   # Set the update interval for sensors
@@ -74,7 +74,7 @@ esphome:
 esp32:
   board: esp32-c5-devkitc1-n4
   flash_size: 4MB
-  flash_mode: qio
+  flash_mode: dio
   variant: ESP32C5
   framework:
     type: esp-idf
