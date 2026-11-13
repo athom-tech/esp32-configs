@@ -227,7 +227,7 @@ On older Home Assistant releases without the **Event received** trigger, trigger
 
 The RF433 IR Remote Pro ships with the standard firmware (`athom-rf-ir-remote-pro.yaml`). If you connect an external I2C sensor (SDA `GPIO5`, SCL `GPIO4`), switch to the matching firmware directly from Home Assistant:
 
-1. Set **Firmware Variant** to **Standard**, **With sht40**, or **With scd40**. The selector always shows the variant currently running after a reboot.
+1. Set **Firmware Variant** to **Standard**, **With sht40 sensor**, or **With scd40 sensor**. The selector always shows the variant currently running after a reboot.
 2. Press **Install Selected Firmware**. The device downloads that variant's manifest from GitHub Pages and installs it over the air, then reboots.
 
 All variants share the same device name and storage layout, so learned IR/RF signals and Home Assistant entities are kept. After switching, the **Firmware Update** entity follows the installed variant's manifest. If the manifest cannot be fetched within 60 seconds, the switch is aborted and logged.

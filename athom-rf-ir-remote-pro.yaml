@@ -6,11 +6,11 @@ substitutions:
   # Allows ESP device to be automatically linked to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc
   room: ""
   # Description as appears in ESPHome & top of webserver page
-  device_description: "athom esp32 RF433 IR Remote Pro"
+  device_description: "athom esp32 RF433 IR Remote Pro(Optional external I2C sensor: SHT40 or SCD40)"
   # Project Name
   project_name: "China Athom Technology.Athom RF433 IR Remote Pro"
   # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
-  project_version: "v5.0.1"
+  project_version: "v5.0.2"
   # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
   dns_domain: ".local"
   # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
@@ -30,7 +30,7 @@ substitutions:
   # valid value: ballu, coolix, daikin, daikin_arc, daikin_brc, delonghi, emmeti, fujitsu_general, gree, hitachi_ac344, hitachi_ac424, climate_ir_lg, midea_ir, mitsubishi, noblex, tcl112, toshiba, whirlpool, yashima, whynter, zhlt01, heatpumpir
   # https://esphome.io/components/climate/climate_ir/
   AC_Platform_name: "coolix"
-  # Firmware variant built from this file: "Standard", "With sht40" or "With scd40".
+  # Firmware variant built from this file: "Standard", "With sht40 sensor" or "With scd40 sensor".
   # Overridden by athom-rf-ir-remote-pro-sht40.yaml / athom-rf-ir-remote-pro-scd40.yaml
   firmware_variant: "Standard"
   # Base name of the published firmware/manifest for this variant
@@ -57,13 +57,12 @@ esphome:
   project:
     name: "${project_name}"
     version: "${project_version}"
-  platformio_options:
-    board_build.flash_mode: dio
 
 esp32:
   board: esp32dev
   variant: esp32
   flash_size: 8MB
+  flash_mode: dio
   framework:
     type: esp-idf
     version: recommended
@@ -604,8 +603,8 @@ select:
     optimistic: true
     options:
       - "Standard"
-      - "With sht40"
-      - "With scd40"
+      - "With sht40 sensor"
+      - "With scd40 sensor"
     initial_option: "${firmware_variant}"
 
 # Script for sending raw IR signals
@@ -627,8 +626,8 @@ script:
             - lambda: |-
                 auto variant = id(firmware_variant_select).current_option();
                 std::string file = "athom-rf-ir-remote-pro";
-                if (variant == "With sht40") file += "-sht40";
-                else if (variant == "With scd40") file += "-scd40";
+                if (variant == "With sht40 sensor") file += "-sht40";
+                else if (variant == "With scd40 sensor") file += "-scd40";
                 id(fw_target_file) = file;
                 std::string url = "https://athom-tech.github.io/esp32-configs/firmware/" + file + ".manifest.json";
                 ESP_LOGI("FW_VARIANT", "Switching to %s firmware: %s", variant.c_str(), url.c_str());

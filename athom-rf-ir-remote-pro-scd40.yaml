@@ -2,15 +2,15 @@
 # Builds on athom-rf-ir-remote-pro.yaml; switch between Standard / SHT40 / SCD40
 # firmware from Home Assistant with "Firmware Variant" + "Install Selected Firmware".
 substitutions:
-  firmware_variant: "With scd40"
+  firmware_variant: "With scd40 sensor"
   firmware_file: "athom-rf-ir-remote-pro-scd40"
-  device_description: "athom esp32 RF433 IR Remote Pro with SCD40"
+  device_description: "athom esp32 RF433 IR Remote Pro(Optional external I2C sensor: SHT40 or SCD40)"
   # Sensor self-heating compensation written to the SCD40 (°C)
-  scd40_temperature_offset: "4"
+  scd40_temperature_offset: "0"
   # Installation altitude used for CO2 pressure compensation (m)
   altitude_compensation: "0m"
   # SCD40 polling interval
-  sensor_update_interval: 60s
+  sensor_update_interval: 5s
 
 packages:
   base: !include athom-rf-ir-remote-pro.yaml

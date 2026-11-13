@@ -128,8 +128,7 @@ jobs:
 
       - name: ESPHome ${{ needs.prepare.outputs.esphome-version }}
         id: build
-        continue-on-error: true
-        uses: esphome/build-action@v7
+        uses: esphome/build-action@v8.1.0
         with:
           yaml-file: ${{ matrix.file }}
           version: ${{ needs.prepare.outputs.esphome-version }}
@@ -138,93 +137,24 @@ jobs:
           release-url: ${{ needs.prepare.outputs.release-url }}
 
       - name: Collect firmware files
+        env:
+          CONFIG_FILE: ${{ matrix.file }}
+          BUILD_DIR: ${{ steps.build.outputs.name }}
         run: |
           set -euo pipefail
 
-          name="${{ matrix.file }}"
-          name="${name%.yaml}"
-          mkdir -p "firmware/${name}"
-
-          build_name="${{ steps.build.outputs.name }}"
-          build_dir=""
-
-          if [ -n "${build_name}" ] && [ -d "${build_name}" ]; then
-            build_dir="${build_name}"
-          else
-            mapfile -t candidates < <(find . -mindepth 2 -maxdepth 2 -name '*.factory.bin' -exec dirname {} \; | sed 's#^\./##' | sort -u)
-            if [ "${#candidates[@]}" -eq 1 ]; then
-              build_dir="${candidates[0]}"
-              build_name="$(basename "${build_dir}")"
-            fi
-          fi
-
-          if [ -z "${build_dir}" ] || [ ! -d "${build_dir}" ]; then
+          if [ -z "${BUILD_DIR}" ] || [ ! -d "${BUILD_DIR}" ]; then
             echo "Expected ESPHome build output directory was not found." >&2
-            find . -maxdepth 3 -type f \( -name '*.bin' -o -name 'manifest.json' \) -print >&2
             exit 1
           fi
 
-          cp "${build_dir}/"*.bin "firmware/${name}/"
-
-          factory_bin="$(find "firmware/${name}" -maxdepth 1 -name '*.factory.bin' -print -quit)"
-          ota_bin="$(find "firmware/${name}" -maxdepth 1 -name '*.ota.bin' -print -quit)"
-
-          if [ -z "${factory_bin}" ] || [ -z "${ota_bin}" ]; then
-            echo "Expected factory and OTA binaries in '${build_dir}'." >&2
-            exit 1
-          fi
-
-          if [ ! -f "${build_dir}/manifest.json" ]; then
-            case "${build_name}" in
-              *-esp32) chip_family="ESP32" ;;
-              *-esp32s2) chip_family="ESP32-S2" ;;
-              *-esp32s3) chip_family="ESP32-S3" ;;
-              *-esp32c3) chip_family="ESP32-C3" ;;
-              *-esp32c5) chip_family="ESP32-C5" ;;
-              *-esp32c6) chip_family="ESP32-C6" ;;
-              *-esp8266) chip_family="ESP8266" ;;
-              *) echo "Cannot infer chip family from build name '${build_name}'." >&2; exit 1 ;;
-            esac
-
-            jq -n --arg chipFamily "${chip_family}" \
-                  --arg name "${name}" \
-                  --arg version "${{ needs.prepare.outputs.esphome-version }}" \
-                  --arg otaPath "$(basename "${ota_bin}")" \
-                  --arg otaMd5 "$(md5sum "${ota_bin}" | awk '{print $1}')" \
-                  --arg otaSha256 "$(sha256sum "${ota_bin}" | awk '{print $1}')" \
-                  --arg factoryPath "$(basename "${factory_bin}")" \
-                  --arg factoryMd5 "$(md5sum "${factory_bin}" | awk '{print $1}')" \
-                  --arg factorySha256 "$(sha256sum "${factory_bin}" | awk '{print $1}')" \
-                  '{
-                    name: $name,
-                    version: $version,
-                    home_assistant_domain: "esphome",
-                    new_install_prompt_erase: false,
-                    builds: [
-                      {
-                        chipFamily: $chipFamily,
-                        ota: {
-                          path: $otaPath,
-                          md5: $otaMd5,
-                          sha256: $otaSha256
-                        },
-                        parts: [
-                          {
-                            path: $factoryPath,
-                            offset: 0,
-                            md5: $factoryMd5,
-                            sha256: $factorySha256
-                          }
-                        ]
-                      }
-                    ]
-                  }' > "firmware/${name}/manifest.json"
-          else
-            cp "${build_dir}/manifest.json" "firmware/${name}/manifest.json"
-          fi
-
-          find "firmware/${name}" -maxdepth 1 -type f -print | sort
-          test -f "firmware/${name}/manifest.json"
+          destination="firmware/${CONFIG_FILE%.yaml}"
+          mkdir -p "${destination}"
+          cp "${BUILD_DIR}/${BUILD_DIR}.factory.bin" \
+             "${BUILD_DIR}/${BUILD_DIR}.ota.bin" \
+             "${BUILD_DIR}/manifest.json" \
+             "${destination}/"
+          find "${destination}" -maxdepth 1 -type f -print | sort
 
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v7

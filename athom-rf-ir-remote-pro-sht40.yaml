@@ -2,14 +2,14 @@
 # Builds on athom-rf-ir-remote-pro.yaml; switch between Standard / SHT40 / SCD40
 # firmware from Home Assistant with "Firmware Variant" + "Install Selected Firmware".
 substitutions:
-  firmware_variant: "With sht40"
+  firmware_variant: "With sht40 sensor"
   firmware_file: "athom-rf-ir-remote-pro-sht40"
-  device_description: "athom esp32 RF433 IR Remote Pro with SHT40"
+  device_description: "athom esp32 RF433 IR Remote Pro(Optional external I2C sensor: SHT40 or SCD40)"
   # Fixed calibration offsets applied before the user-adjustable offsets
   temperature_offset: "0"
   humidity_offset: "0"
   # SHT40 polling interval
-  sensor_update_interval: 30s
+  sensor_update_interval: 5s
 
 packages:
   base: !include athom-rf-ir-remote-pro.yaml
