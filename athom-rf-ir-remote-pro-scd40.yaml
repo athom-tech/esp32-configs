@@ -15,6 +15,12 @@ substitutions:
 packages:
   base: !include athom-rf-ir-remote-pro.yaml
 
+i2c:
+  sda: ${I2C_SDA_PIN}
+  scl: ${I2C_SCL_PIN}
+  scan: true
+  id: bus_a
+
 sensor:
   - platform: scd4x
     i2c_id: bus_a

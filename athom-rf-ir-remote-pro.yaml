@@ -217,13 +217,6 @@ improv_ble:
 dashboard_import:
   package_import_url: github://athom-tech/esp32-configs/${firmware_file}.yaml
 
-# I2C bus for the optional external sensor (SHT40 / SCD40 firmware variants)
-i2c:
-  sda: ${I2C_SDA_PIN}
-  scl: ${I2C_SCL_PIN}
-  scan: true
-  id: bus_a
-
 # Include the local Flash storage component
 external_components:
   - source: github://athom-tech/esp32-configs@main
