@@ -1,0 +1,68 @@
+# Athom RF433 IR Remote Pro with an external SCD40 CO2 sensor.
+# Builds on athom-rf-ir-remote-pro.yaml; switch between Standard / SHT40 / SCD40
+# firmware from Home Assistant with "Firmware Variant" + "Install Selected Firmware".
+substitutions:
+  firmware_variant: "With scd40"
+  firmware_file: "athom-rf-ir-remote-pro-scd40"
+  device_description: "athom esp32 RF433 IR Remote Pro with SCD40"
+  # Sensor self-heating compensation written to the SCD40 (°C)
+  scd40_temperature_offset: "4"
+  # Installation altitude used for CO2 pressure compensation (m)
+  altitude_compensation: "0m"
+  # SCD40 polling interval
+  sensor_update_interval: 60s
+
+packages:
+  base: !include athom-rf-ir-remote-pro.yaml
+
+sensor:
+  - platform: scd4x
+    i2c_id: bus_a
+    id: scd40_sensor
+    update_interval: ${sensor_update_interval}
+    temperature_offset: ${scd40_temperature_offset}
+    altitude_compensation: ${altitude_compensation}
+    co2:
+      name: "CO2"
+      id: co2_sensor
+    temperature:
+      name: "Temperature"
+      id: temperature_sensor
+      filters:
+        - lambda: "return x + id(temperature_offset_selection).state;"
+    humidity:
+      name: "Humidity"
+      id: humidity_sensor
+      filters:
+        - lambda: "return x + id(humidity_offset_selection).state;"
+
+number:
+  - platform: template
+    name: "Temperature Offset"
+    id: temperature_offset_selection
+    unit_of_measurement: "°C"
+    min_value: -10
+    max_value: 10
+    step: 0.1
+    mode: box
+    update_interval: never
+    optimistic: true
+    restore_value: true
+    initial_value: 0
+    icon: "mdi:thermometer"
+    entity_category: config
+
+  - platform: template
+    name: "Humidity Offset"
+    id: humidity_offset_selection
+    unit_of_measurement: "%"
+    min_value: -30
+    max_value: 30
+    step: 0.1
+    mode: box
+    update_interval: never
+    optimistic: true
+    restore_value: true
+    initial_value: 0
+    icon: "mdi:water-percent"
+    entity_category: config

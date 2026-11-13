@@ -33,6 +33,9 @@ Each file contains a `dashboard_import` URL in the form `github://athom-tech/esp
 | `athom-mini-relay-v2.yaml` | Athom Mini Relay V2 | `esp32-c3-devkitm-1` | Mini relay with local switch input, relay output, status LED, and power monitoring. |
 | `athom-presence-sensor-v3.yaml` | Athom Presence Sensor | `esp32-c3-devkitm-1` | mmWave presence sensor with light sensing, zone controls, UART/I2C peripherals, and status LED. |
 | `athom-rf-ir-remote.yaml` | Athom RF IR Remote | `esp32dev` | RF/IR remote bridge with 10 IR learning slots, 16 RF433 learning slots, transmission controls, and status telemetry. |
+| `athom-rf-ir-remote-pro.yaml` | Athom RF433 IR Remote Pro | `esp32dev` | RF433/IR remote bridge with learning slots, IR climate, and in-place switching to the SHT40/SCD40 firmware variants below. |
+| `athom-rf-ir-remote-pro-sht40.yaml` | Athom RF433 IR Remote Pro + SHT40 | `esp32dev` | RF433 IR Remote Pro firmware with an external SHT40 temperature and humidity sensor and calibration offsets. |
+| `athom-rf-ir-remote-pro-scd40.yaml` | Athom RF433 IR Remote Pro + SCD40 | `esp32dev` | RF433 IR Remote Pro firmware with an external SCD40 CO2, temperature, and humidity sensor and calibration offsets. |
 | `athom-rgbcw-bulb.yaml` | Athom RGBCW Bulb | `esp32-c3-devkitm-1` | RGBCW bulb with RGBWW output, power-on state control, and switchable ESP-NOW remote pairing and control. |
 | `athom-rgbcw-light.yaml` | Athom RGBCW Bulb | `esp32-c3-devkitm-1` | 12W RGBCW light variant with alternate GPIO mapping and switchable ESP-NOW remote pairing and control. |
 | `athom-scd40-sensor.yaml` | Athom C02 Sensor | `esp32-c3-devkitm-1` | SCD40 CO2, temperature, and humidity sensor with status light control. |
@@ -219,6 +222,15 @@ automation:
 ```
 
 On older Home Assistant releases without the **Event received** trigger, trigger on the event entity's timestamp changing and inspect `event_type` in a condition. Triggering only on a change of the `event_type` attribute would miss consecutive identical gestures.
+
+### RF433 IR Remote Pro: Sensor Firmware Variants
+
+The RF433 IR Remote Pro ships with the standard firmware (`athom-rf-ir-remote-pro.yaml`). If you connect an external I2C sensor (SDA `GPIO5`, SCL `GPIO4`), switch to the matching firmware directly from Home Assistant:
+
+1. Set **Firmware Variant** to **Standard**, **With sht40**, or **With scd40**. The selector always shows the variant currently running after a reboot.
+2. Press **Install Selected Firmware**. The device downloads that variant's manifest from GitHub Pages and installs it over the air, then reboots.
+
+All variants share the same device name and storage layout, so learned IR/RF signals and Home Assistant entities are kept. After switching, the **Firmware Update** entity follows the installed variant's manifest. If the manifest cannot be fetched within 60 seconds, the switch is aborted and logged.
 
 ## Troubleshooting
 

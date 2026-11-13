@@ -1,0 +1,757 @@
+substitutions:
+  # Default name
+  name: "athom-rf-ir-remote"
+  # Default friendly name
+  friendly_name: "Athom RF IR Remote"
+  # Allows ESP device to be automatically linked to an 'Area' in Home Assistant. Typically used for areas such as 'Lounge Room', 'Kitchen' etc
+  room: ""
+  # Description as appears in ESPHome & top of webserver page
+  device_description: "athom esp32 RF433 IR Remote Pro"
+  # Project Name
+  project_name: "China Athom Technology.Athom RF433 IR Remote Pro"
+  # Projection version denotes the release version of the yaml file, allowing checking of deployed vs latest version
+  project_version: "v5.0.1"
+  # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
+  dns_domain: ".local"
+  # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
+  timezone: ""
+  # Set the duration between the sntp service polling ntp.org servers for an update
+  sntp_update_interval: 6h
+  # Network time servers for your region, enter from lowest to highest priority. To use local servers update as per zones or countries at: https://www.ntppool.org/zone/@
+  sntp_server_1: "0.pool.ntp.org"
+  sntp_server_2: "1.pool.ntp.org"
+  sntp_server_3: "2.pool.ntp.org"
+  # Enables faster network connections, with last connected SSID being connected to and no full scan for SSID being undertaken
+  wifi_fast_connect: "false"
+  # Define logging level: NONE, ERROR, WARN, INFO, DEBUG (Default), VERBOSE, VERY_VERBOSE
+  log_level: "DEBUG"
+  # Enable or disable the use of IPv6 networking on the device
+  ipv6_enable: "false"
+  # valid value: ballu, coolix, daikin, daikin_arc, daikin_brc, delonghi, emmeti, fujitsu_general, gree, hitachi_ac344, hitachi_ac424, climate_ir_lg, midea_ir, mitsubishi, noblex, tcl112, toshiba, whirlpool, yashima, whynter, zhlt01, heatpumpir
+  # https://esphome.io/components/climate/climate_ir/
+  AC_Platform_name: "coolix"
+  # Firmware variant built from this file: "Standard", "With sht40" or "With scd40".
+  # Overridden by athom-rf-ir-remote-pro-sht40.yaml / athom-rf-ir-remote-pro-scd40.yaml
+  firmware_variant: "Standard"
+  # Base name of the published firmware/manifest for this variant
+  firmware_file: "athom-rf-ir-remote-pro"
+
+#########################GPIO######################
+  RF_RX_PIN: GPIO19
+  RF_TX_PIN: GPIO18
+  IR_RX_PIN: GPIO33
+  IR_TX_PIN: GPIO25
+  Button_PIN: GPIO0
+  I2C_SCL_PIN: GPIO4
+  I2C_SDA_PIN: GPIO5
+  LED_PIN: GPIO27
+#########################GPIO######################
+
+esphome:
+  name: "${name}"
+  friendly_name: "${friendly_name}"
+  comment: "${device_description}"
+  area: "${room}"
+  name_add_mac_suffix: true
+  min_version: 2026.10.0
+  project:
+    name: "${project_name}"
+    version: "${project_version}"
+  platformio_options:
+    board_build.flash_mode: dio
+
+esp32:
+  board: esp32dev
+  variant: esp32
+  flash_size: 8MB
+  framework:
+    type: esp-idf
+    version: recommended
+    sdkconfig_options:
+      # @grigi found in testing that these options resulted in better responsiveness.
+      # BLE 4.2 is supported by ALL ESP32 boards that have bluetooth, the original and derivatives.
+      CONFIG_BT_BLE_42_FEATURES_SUPPORTED: y
+      # Extend the watchdog timeout, so the device reboots if the device appears locked up for over 10 seconds.
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "10"
+
+preferences:
+  id: preferences_component
+  flash_write_interval: 1min
+
+# Global variables for IR learning
+globals:
+  - id: is_learning_mode
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  - id: signal_select_index
+    type: int
+    restore_value: yes
+    initial_value: '0'
+  - id: filter_size
+    type: int
+    restore_value: no
+    initial_value: '10'
+  # RF433 learning mode flag (independent from IR learning)
+  - id: is_rf_learning_mode
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+  # RF433 slot index, offset to 10-25 so it never collides with IR slots 0-9
+  - id: rf_signal_select_index
+    type: int
+    restore_value: yes
+    initial_value: '10'
+  # Temp holders for the rc_switch code/protocol to transmit; referenced by
+  # transmit_rc_switch_raw's !lambda during playback
+  - id: rf_tx_code
+    type: uint64_t
+    restore_value: no
+    initial_value: '0'
+  - id: rf_tx_protocol
+    type: int
+    restore_value: no
+    initial_value: '0'
+  # Published file name of the variant being installed by "Install Selected Firmware"
+  - id: fw_target_file
+    type: std::string
+    restore_value: no
+    initial_value: '""'
+  - id: fw_manifest_ready
+    type: bool
+    restore_value: no
+    initial_value: 'false'
+
+# Flash storage component for saving IR signals
+Flash_comp:
+  id: signal_nvs
+
+api:
+  id: api_component
+  reboot_timeout: 0s
+  # Only enable BLE tracking when wifi is up and api is connected
+  # Gives single-core ESP32-C3 devices time to manage wifi and authenticate with api
+  on_client_connected:
+     - esp32_ble_tracker.start_scan:
+        continuous: true
+  # Disable BLE tracking when there are no api connections live
+  on_client_disconnected:
+    if:
+      condition:
+        not:
+          api.connected:
+      then:
+        - esp32_ble_tracker.stop_scan:
+
+ota:
+  - platform: esphome
+    id: ota_esphome
+  # Enables OTA firmware flashing from a URL (used by the update component below)
+  - platform: http_request
+    id: ota_http_request
+
+# Required by the ota http_request platform and the update component.
+# verify_ssl: false skips TLS cert validation to reduce heap/RAM pressure during
+# the download; the manifest's MD5 still verifies firmware integrity before flashing.
+http_request:
+  id: http_request_component
+  verify_ssl: false
+
+update:
+  # Managed updates via HTTP request: periodically checks the published manifest
+  # and exposes a "Firmware Update" entity, pointing at this device's GitHub Pages
+  # manifest. Pages URLs avoid the redirect/buffer issues of Release download URLs.
+  - platform: http_request
+    id: update_http_request
+    name: "Firmware Update"
+    source: https://athom-tech.github.io/esp32-configs/firmware/${firmware_file}.manifest.json
+    # update_interval defaults to 6h (how often it checks, not installs)
+
+logger:
+  id: logger_component
+  baud_rate: 115200
+  level: ${log_level}
+
+mdns:
+  id: mdns_component
+  disabled: false
+
+web_server:
+  id: web_server_component
+  port: 80
+
+network:
+  id: network_component
+  enable_ipv6: ${ipv6_enable}
+
+wifi:
+  id: wifi_component
+  # This spawns an AP with the device name and mac address with no password.
+  ap: {}
+  # Allow rapid re-connection to previously connect WiFi SSID, skipping scan of all SSID
+  fast_connect: "${wifi_fast_connect}"
+  # Define dns domain / suffix to add to hostname
+  domain: "${dns_domain}"
+
+esp32_ble_tracker:
+  id: esp32_ble_tracker_component
+  scan_parameters:
+    # Don't auto start BLE scanning, we control it in the `api` block's automation.
+    continuous: false
+    active: true  # send scan-request packets to gather more info, like device name for some devices.
+    interval: 320ms  # default 320ms - how long to spend on each advert channel
+    window:   300ms  # default 30ms - how long to actually "listen" in each interval. Reduce this if device is unstable.
+    # If the device cannot keep up or becomes unstable, reduce the "window" setting. This may be
+    # required if your device is controlling other sensors or doing PWM for lights etc.
+
+bluetooth_proxy:
+  id: bluetooth_proxy_component
+  active: true
+
+captive_portal:
+  id: captive_portal_component
+
+improv_ble:
+  id: improv_ble_component
+  authorizer: none
+
+dashboard_import:
+  package_import_url: github://athom-tech/esp32-configs/${firmware_file}.yaml
+
+# I2C bus for the optional external sensor (SHT40 / SCD40 firmware variants)
+i2c:
+  sda: ${I2C_SDA_PIN}
+  scl: ${I2C_SCL_PIN}
+  scan: true
+  id: bus_a
+
+# Include the local Flash storage component
+external_components:
+  - source: github://athom-tech/esp32-configs@main
+    components: [Flash_comp]
+
+remote_receiver:
+  - pin:
+      number: ${RF_RX_PIN}
+      inverted: true
+    dump: rc_switch
+    # RF433 fixed-code decoding: filter glitches, split frames on 4ms idle,
+    # and widen tolerance for cheap remotes. rc_switch decoding rejects the
+    # receiver's ambient noise, so learning no longer false-triggers.
+    filter: 50us
+    idle: 10ms
+    tolerance: 50%
+    id: rf_receiver
+    on_rc_switch:
+      - lambda: |-
+          if (id(is_rf_learning_mode)) {
+            std::vector<int> d;
+            d.push_back((int) x.protocol);
+            d.push_back((int) (x.code >> 32));
+            d.push_back((int) (x.code & 0xFFFFFFFF));
+            id(signal_nvs).save_to_nvs(id(rf_signal_select_index), d);
+            ESP_LOGI("RF_LEARNING", "Learned protocol=%u code=%llu slot=%d",
+                     x.protocol, (unsigned long long) x.code, id(rf_signal_select_index));
+            id(is_rf_learning_mode) = false;
+            id(rf_status_text).publish_state("Signal learned!");
+          }
+
+  - pin:
+      number: ${IR_RX_PIN}
+      inverted: true
+    dump: all
+    tolerance: 25%
+    idle: 65500us
+    clock_resolution: "500000"
+    id: ir_receiver
+    on_raw:
+      - lambda: |-
+          if (id(is_learning_mode)) {
+            if (x.size() > id(filter_size)) {
+              id(signal_nvs).save_to_nvs(id(signal_select_index), x);
+              ESP_LOGI("IR_LEARNING", "Signal saved to slot %d, size: %d", id(signal_select_index), x.size());
+              id(is_learning_mode) = false;
+              id(status_text).publish_state("Signal learned!");
+            } else {
+              ESP_LOGW("IR_LEARNING", "Signal too short: %d", x.size());
+            }
+          }
+
+remote_transmitter:
+  - pin:
+      number: ${RF_TX_PIN}
+    # OOK modulation for RF433 — keep duty at 100%
+    carrier_duty_percent: 100%
+    non_blocking: true
+    id: rf_transmitter
+
+  - pin:
+      number: ${IR_TX_PIN}
+      inverted: false
+    carrier_duty_percent: 50%
+    non_blocking: true
+    id: ir_transmitter
+
+infrared:
+  - platform: ir_rf_proxy
+    name: IR Proxy Transmitter
+    id: ir_proxy_transmitter
+    remote_transmitter_id: ir_transmitter
+
+  - platform: ir_rf_proxy
+    name: IR Proxy Receiver
+    id: ir_proxy_receiver
+    receiver_frequency: 38kHz
+    remote_receiver_id: ir_receiver
+
+  # RF transmitter instance
+radio_frequency:
+  - platform: ir_rf_proxy
+    name: 433MHz RF Transmitter
+    id: rf_proxy_transmitter
+    frequency: 433.92MHz
+    remote_transmitter_id: rf_transmitter
+
+  - platform: ir_rf_proxy
+    name: 433MHz RF Receiver
+    id: rf_proxy_receiver
+    frequency: 433.92MHz
+    remote_receiver_id: rf_receiver
+
+climate:
+  - id: "AC"
+    name: "AC"
+    platform: ${AC_Platform_name}
+    transmitter_id: ir_transmitter
+    receiver_id: ir_receiver
+
+binary_sensor:
+  - platform: status
+    name: "Status"
+    id: id_status
+    entity_category: "diagnostic"
+
+  - platform: gpio
+    pin:
+      number: ${Button_PIN}
+      mode:
+        input: true
+      inverted: true
+    name: "Button"
+    disabled_by_default: true
+    id: power_button
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing:
+          - ON for at least 4s
+        then:
+          - button.press: Reset
+
+sensor:
+  - platform: uptime
+    name: "Uptime Sensor"
+    id: uptime_sensor
+    type:
+      timestamp
+    entity_category: "diagnostic"
+
+  - platform: wifi_signal
+    name: "WiFi Signal dB"
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: "diagnostic"
+
+  - platform: copy
+    source_id: wifi_signal_db
+    name: "WiFi Signal Percent"
+    id: wifi_signal_percent
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "Signal %"
+    entity_category: "diagnostic"
+    device_class: ""
+
+  - platform: debug
+    free:
+      name: "Heap Free"
+      id: debug_heap_free
+      unit_of_measurement: "KiB"
+      accuracy_decimals: 1
+      filters:
+        - multiply: 0.0009765625
+
+button:
+  - platform: restart
+    name: "Restart"
+    id: id_restart
+    entity_category: config
+
+  - platform: factory_reset
+    name: "Factory Reset"
+    id: Reset
+    entity_category: config
+
+  - platform: safe_mode
+    name: "Safe Mode"
+    id: id_safe_mode
+    internal: false
+    entity_category: config
+
+  # IR learning button
+  - platform: template
+    name: "IR Learn"
+    id: template_ir_learn
+    icon: mdi:remote-tv
+    on_press:
+      - lambda: |-
+          id(is_learning_mode) = true;
+          ESP_LOGI("IR_LEARNING", "Learning mode activated for slot %d", id(signal_select_index));
+          id(status_text).publish_state("Ready to learn...");
+
+  # IR send button
+  - platform: template
+    name: "IR Send"
+    id: template_ir_send
+    icon: mdi:send
+    on_press:
+      - script.execute: send_raw_signal
+
+  # Clear the signal in the current slot
+  - platform: template
+    name: "IR Clear Slot"
+    id: template_ir_clear_slot
+    icon: mdi:delete
+    on_press:
+      - lambda: |-
+          std::vector<int> empty_signal;
+          id(signal_nvs).save_to_nvs(id(signal_select_index), empty_signal);
+          ESP_LOGI("IR_LEARNING", "Cleared slot %d", id(signal_select_index));
+          id(status_text).publish_state("Slot cleared");
+
+  # RF433 learning button
+  - platform: template
+    name: "RF Learn"
+    id: template_rf_learn
+    icon: mdi:remote
+    on_press:
+      - lambda: |-
+          id(is_rf_learning_mode) = true;
+          ESP_LOGI("RF_LEARNING", "Learning mode activated for slot %d", id(rf_signal_select_index));
+          id(rf_status_text).publish_state("Ready to learn...");
+
+  # RF433 send button
+  - platform: template
+    name: "RF Send"
+    id: template_rf_send
+    icon: mdi:send
+    on_press:
+      - script.execute: send_raw_rf_signal
+
+  # Clear the RF signal in the current slot
+  - platform: template
+    name: "RF Clear Slot"
+    id: template_rf_clear_slot
+    icon: mdi:delete
+    on_press:
+      - lambda: |-
+          std::vector<int> empty_signal;
+          id(signal_nvs).save_to_nvs(id(rf_signal_select_index), empty_signal);
+          ESP_LOGI("RF_LEARNING", "Cleared slot %d", id(rf_signal_select_index));
+          id(rf_status_text).publish_state("Slot cleared");
+
+  # Download and install the firmware variant chosen in "Firmware Variant"
+  - platform: template
+    name: "Install Selected Firmware"
+    id: template_install_firmware_variant
+    icon: mdi:cellphone-arrow-down
+    entity_category: config
+    on_press:
+      - script.execute: install_firmware_variant
+
+light:
+  - platform: status_led
+    name: "Status LED"
+    id: blue_led
+    disabled_by_default: true
+    pin: ${LED_PIN}
+debug:
+  id: debug_component
+  update_interval: 5s
+
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      id: ip_address
+      entity_category: diagnostic
+    ssid:
+      name: "Connected SSID"
+      id: ssid
+      entity_category: diagnostic
+    mac_address:
+      name: "Mac Address"
+      id: mac_address
+      entity_category: diagnostic
+
+  - platform: template
+    name: "Last Restart"
+    id: device_last_restart
+    icon: mdi:clock
+    entity_category: diagnostic
+
+  # IR learning status display
+  - platform: template
+    name: "IR Learning Status"
+    id: status_text
+    icon: mdi:information
+    entity_category: diagnostic
+
+  # RF433 learning status display
+  - platform: template
+    name: "RF Learning Status"
+    id: rf_status_text
+    icon: mdi:information
+    entity_category: diagnostic
+
+  - platform: debug
+    reset_reason:
+      name: "Reset Reason"
+      id: debug_reset_reason
+
+# Signal slot selector
+select:
+  - platform: template
+    name: "IR Signal Slot"
+    id: signal_slot_select
+    optimistic: true
+    options:
+      - "Signal 0"
+      - "Signal 1"
+      - "Signal 2"
+      - "Signal 3"
+      - "Signal 4"
+      - "Signal 5"
+      - "Signal 6"
+      - "Signal 7"
+      - "Signal 8"
+      - "Signal 9"
+    initial_option: "Signal 0"
+    on_value:
+      - lambda: |-
+          if (x == "Signal 0") id(signal_select_index) = 0;
+          else if (x == "Signal 1") id(signal_select_index) = 1;
+          else if (x == "Signal 2") id(signal_select_index) = 2;
+          else if (x == "Signal 3") id(signal_select_index) = 3;
+          else if (x == "Signal 4") id(signal_select_index) = 4;
+          else if (x == "Signal 5") id(signal_select_index) = 5;
+          else if (x == "Signal 6") id(signal_select_index) = 6;
+          else if (x == "Signal 7") id(signal_select_index) = 7;
+          else if (x == "Signal 8") id(signal_select_index) = 8;
+          else if (x == "Signal 9") id(signal_select_index) = 9;
+          ESP_LOGI("IR_LEARNING", "Selected slot: %d", id(signal_select_index));
+
+  # RF433 signal slot selector (mapped to NVS index 10-19 to avoid IR collision)
+  - platform: template
+    name: "RF Signal Slot"
+    id: rf_signal_slot_select
+    optimistic: true
+    options:
+      - "Signal 0"
+      - "Signal 1"
+      - "Signal 2"
+      - "Signal 3"
+      - "Signal 4"
+      - "Signal 5"
+      - "Signal 6"
+      - "Signal 7"
+      - "Signal 8"
+      - "Signal 9"
+      - "Signal 10"
+      - "Signal 11"
+      - "Signal 12"
+      - "Signal 13"
+      - "Signal 14"
+      - "Signal 15"
+    initial_option: "Signal 0"
+    on_value:
+      - lambda: |-
+          if (x == "Signal 0") id(rf_signal_select_index) = 10;
+          else if (x == "Signal 1") id(rf_signal_select_index) = 11;
+          else if (x == "Signal 2") id(rf_signal_select_index) = 12;
+          else if (x == "Signal 3") id(rf_signal_select_index) = 13;
+          else if (x == "Signal 4") id(rf_signal_select_index) = 14;
+          else if (x == "Signal 5") id(rf_signal_select_index) = 15;
+          else if (x == "Signal 6") id(rf_signal_select_index) = 16;
+          else if (x == "Signal 7") id(rf_signal_select_index) = 17;
+          else if (x == "Signal 8") id(rf_signal_select_index) = 18;
+          else if (x == "Signal 9") id(rf_signal_select_index) = 19;
+          else if (x == "Signal 10") id(rf_signal_select_index) = 20;
+          else if (x == "Signal 11") id(rf_signal_select_index) = 21;
+          else if (x == "Signal 12") id(rf_signal_select_index) = 22;
+          else if (x == "Signal 13") id(rf_signal_select_index) = 23;
+          else if (x == "Signal 14") id(rf_signal_select_index) = 24;
+          else if (x == "Signal 15") id(rf_signal_select_index) = 25;
+          ESP_LOGI("RF_LEARNING", "Selected slot: %d", id(rf_signal_select_index));
+
+  # Firmware variant selector. Always starts at the variant that is running;
+  # pick another one and press "Install Selected Firmware" to switch.
+  - platform: template
+    name: "Firmware Variant"
+    id: firmware_variant_select
+    icon: mdi:chip
+    entity_category: config
+    optimistic: true
+    options:
+      - "Standard"
+      - "With sht40"
+      - "With scd40"
+    initial_option: "${firmware_variant}"
+
+# Script for sending raw IR signals
+script:
+  # Point the update entity at the selected variant's manifest, wait until that
+  # manifest has been fetched, then force-install it (all variants share the same
+  # project version, so a normal update would never be offered).
+  - id: install_firmware_variant
+    mode: single
+    then:
+      - if:
+          condition:
+            lambda: 'return id(firmware_variant_select).current_option() == "${firmware_variant}";'
+          then:
+            - logger.log:
+                format: "Firmware variant ${firmware_variant} is already running"
+                level: INFO
+          else:
+            - lambda: |-
+                auto variant = id(firmware_variant_select).current_option();
+                std::string file = "athom-rf-ir-remote-pro";
+                if (variant == "With sht40") file += "-sht40";
+                else if (variant == "With scd40") file += "-scd40";
+                id(fw_target_file) = file;
+                std::string url = "https://athom-tech.github.io/esp32-configs/firmware/" + file + ".manifest.json";
+                ESP_LOGI("FW_VARIANT", "Switching to %s firmware: %s", variant.c_str(), url.c_str());
+                id(update_http_request).set_source_url(url);
+            - lambda: 'id(fw_manifest_ready) = false;'
+            - component.update: update_http_request
+            - wait_until:
+                condition:
+                  lambda: |-
+                    // Release assets are published as "<file>-<binary>", so the resolved
+                    // OTA URL shows whether the target variant's manifest has been loaded.
+                    const std::string &url = id(update_http_request).update_info.firmware_url;
+                    const std::string prefix = "/firmware/" + id(fw_target_file) + "-";
+                    size_t pos = url.find(prefix);
+                    bool ready = pos != std::string::npos;
+                    if (ready && id(fw_target_file) == "athom-rf-ir-remote-pro") {
+                      // Standard target: make sure it is not a sensor variant's asset
+                      std::string rest = url.substr(pos + prefix.size());
+                      ready = rest.rfind("sht40-", 0) != 0 && rest.rfind("scd40-", 0) != 0;
+                    }
+                    id(fw_manifest_ready) = ready;
+                    return ready;
+                timeout: 60s
+            - if:
+                condition:
+                  lambda: 'return id(fw_manifest_ready);'
+                then:
+                  - update.perform:
+                      id: update_http_request
+                      force_update: true
+                else:
+                  - logger.log:
+                      format: "Failed to fetch the selected firmware manifest, switch aborted"
+                      level: ERROR
+                  # Restore this variant's own manifest for regular updates
+                  - lambda: 'id(update_http_request).set_source_url("https://athom-tech.github.io/esp32-configs/firmware/${firmware_file}.manifest.json");'
+                  - component.update: update_http_request
+
+  - id: send_raw_signal
+    then:
+      - lambda: |-
+          std::vector<int> signal_data = id(signal_nvs).load_from_nvs<int>(id(signal_select_index));
+          if (signal_data.size() > 0) {
+            ESP_LOGI("IR_SEND", "Sending signal from slot %d, size: %d", id(signal_select_index), signal_data.size());
+            id(status_text).publish_state("Sending signal...");
+            auto transmit = id(ir_transmitter).transmit();
+            auto data = transmit.get_data();
+            data->set_carrier_frequency(38000);
+            for (int i = 0; i < signal_data.size(); i++) {
+              if (i % 2 == 0) {
+                data->mark(signal_data[i]);
+              } else {
+                data->space(signal_data[i]);
+              }
+            }
+            transmit.perform();
+            id(status_text).publish_state("Signal sent!");
+          } else {
+            ESP_LOGW("IR_SEND", "No signal stored in slot %d", id(signal_select_index));
+            id(status_text).publish_state("No signal in this slot");
+          }
+
+  # Script for sending learned RF433 rc_switch signals
+  - id: send_raw_rf_signal
+    then:
+      # Load [protocol, code_high, code_low] from NVS and rebuild the 64-bit code
+      # into the temp globals that transmit_rc_switch_raw reads via !lambda.
+      - lambda: |-
+          std::vector<int> d = id(signal_nvs).load_from_nvs<int>(id(rf_signal_select_index));
+          if (d.size() >= 3) {
+            id(rf_tx_protocol) = d[0];
+            id(rf_tx_code) = ((uint64_t) (uint32_t) d[1] << 32) | (uint32_t) d[2];
+            ESP_LOGI("RF_SEND", "Sending protocol=%d code=%llu slot=%d",
+                     id(rf_tx_protocol), (unsigned long long) id(rf_tx_code), id(rf_signal_select_index));
+            id(rf_status_text).publish_state("Sending signal...");
+          } else {
+            id(rf_tx_protocol) = 0;
+            ESP_LOGW("RF_SEND", "No signal stored in slot %d", id(rf_signal_select_index));
+            id(rf_status_text).publish_state("No signal in this slot");
+          }
+      - if:
+          condition:
+            lambda: 'return id(rf_tx_protocol) > 0;'
+          then:
+            - remote_transmitter.transmit_rc_switch_raw:
+                # protocol must be an RCSwitchBase: index the built-in table (1..8)
+                protocol: !lambda 'return esphome::remote_base::RC_SWITCH_PROTOCOLS[id(rf_tx_protocol)];'
+                # code must be an MSB-first binary string; its length is the bit count.
+                # on_rc_switch does not expose the received bit length, and virtually
+                # all 433MHz fixed-code remotes (EV1527/PT2262/…) are 24-bit.
+                code: !lambda |-
+                  uint64_t code = id(rf_tx_code);
+                  const int nbits = 24;
+                  std::string s;
+                  for (int i = nbits - 1; i >= 0; i--)
+                    s += (code & ((uint64_t) 1 << i)) ? '1' : '0';
+                  return s;
+                transmitter_id: rf_transmitter
+                repeat:
+                  times: 5
+                  wait_time: 0us
+            - lambda: 'id(rf_status_text).publish_state("Signal sent!");'
+
+time:
+  - platform: sntp
+    id: sntp_time
+  # Define the timezone of the device
+    timezone: "${timezone}"
+  # Change sync interval from default 5min to 6 hours (or as set in substitutions)
+    update_interval: ${sntp_update_interval}
+  # Set specific sntp servers to use
+    servers:
+      - "${sntp_server_1}"
+      - "${sntp_server_2}"
+      - "${sntp_server_3}"
+  # Publish the time the device was last restarted
+    on_time_sync:
+      then:
+        # Update last restart time, but only once.
+        - if:
+            condition:
+              lambda: 'return id(device_last_restart).state == "";'
+            then:
+              - text_sensor.template.publish:
+                  id: device_last_restart
+                  state: !lambda 'return id(sntp_time).now().strftime("%a %d %b %Y - %I:%M:%S %p");'
