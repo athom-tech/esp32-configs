@@ -1,6 +1,6 @@
 # Athom ESPHome Device Configurations
 
-This repository contains ESPHome YAML configurations for Athom ESP32, ESP32-C3, and ESP32-C5 devices.
+This repository contains ESPHome YAML configurations for Athom ESP32, ESP32-C3, ESP32-C5, and ESP32-C6 devices.
 
 ## Quick Links
 
@@ -31,6 +31,9 @@ Each file contains a `dashboard_import` URL in the form `github://athom-tech/esp
 | `athom-garage-door.yaml` | Athom Garage Door | `esp32-c3-devkitm-1` | Garage door opener with relay control, door state inputs, template cover, and status LED. |
 | `athom-ld2450-sensor.yaml` | PS02C3MZ Sensor | `esp32-c3-devkitm-1` | LD2450 mmWave presence sensor with target tracking, zones, light sensor, and status LED. |
 | `athom-mini-relay-v2.yaml` | Athom Mini Relay V2 | `esp32-c3-devkitm-1` | Mini relay with local switch input, relay output, status LED, and power monitoring. |
+| `athom-presence-sensor-pro.yaml` | Athom Presence Sensor Pro | `esp32-c6-devkitm-1` | mmWave and PIR presence detection, light sensing, Bluetooth proxy, and OTA switching between sensor firmware variants. |
+| `athom-presence-sensor-pro-sht40.yaml` | Athom Presence Sensor Pro + SHT40 | `esp32-c6-devkitm-1` | Presence Sensor Pro with external temperature and humidity sensing and calibration offsets. |
+| `athom-presence-sensor-pro-scd40.yaml` | Athom Presence Sensor Pro + SCD40 | `esp32-c6-devkitm-1` | Presence Sensor Pro with external CO2, temperature, and humidity sensing and calibration offsets. |
 | `athom-presence-sensor-v3.yaml` | Athom Presence Sensor | `esp32-c3-devkitm-1` | mmWave presence sensor with light sensing, zone controls, UART/I2C peripherals, and status LED. |
 | `athom-rf-ir-remote.yaml` | Athom RF IR Remote | `esp32dev` | RF/IR remote bridge with 10 IR learning slots, 16 RF433 learning slots, transmission controls, and status telemetry. |
 | `athom-rf-ir-remote-pro.yaml` | Athom RF433 IR Remote Pro | `esp32dev` | RF433/IR remote bridge with learning slots, IR climate, and in-place switching to the SHT40/SCD40 firmware variants below. |
@@ -231,6 +234,12 @@ The RF433 IR Remote Pro ships with the standard firmware (`athom-rf-ir-remote-pr
 2. Press **Install Selected Firmware**. The device downloads that variant's manifest from GitHub Pages and installs it over the air, then reboots.
 
 All variants share the same device name and storage layout, so learned IR/RF signals and Home Assistant entities are kept. After switching, the **Firmware Update** entity follows the installed variant's manifest. If the manifest cannot be fetched within 60 seconds, the switch is aborted and logged.
+
+### Presence Sensor Pro sensor firmware variants
+
+Connect the external SHT40 or SCD40 sensor to the Presence Sensor Pro's I2C pins (`SDA GPIO13`, `SCL GPIO12`). In Home Assistant, set **Firmware Variant** to **With sht40 sensor** or **With scd40 sensor**, then press **Install Selected Firmware**. To return to the firmware for use without an external sensor, select **Standard** and press the same button.
+
+The device installs the selected firmware from GitHub Pages and reboots. Online switching requires that all three variants have been published. After reboot, **Firmware Variant** shows the installed variant and **Firmware Update** checks that variant's manifest.
 
 ## Troubleshooting
 
