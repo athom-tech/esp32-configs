@@ -29,7 +29,13 @@ Each file contains a `dashboard_import` URL in the form `github://athom-tech/esp
 | `athom-energy-monitor-x2.yaml` | Athom Energy Meter | `esp32-c3-devkitm-1` | Two-channel energy monitor using the local `bl0906` component. |
 | `athom-energy-monitor-x6.yaml` | Athom Energy Meter | `esp32-c3-devkitm-1` | Six-channel energy monitor using the local `bl0906` component. |
 | `athom-garage-door.yaml` | Athom Garage Door | `esp32-c3-devkitm-1` | Garage door opener with relay control, door state inputs, template cover, and status LED. |
+| `athom-ld2412-sensor.yaml` | LD2412 Sensor | `esp32-c6-devkitm-1` | LD2412 motion and presence radar, PIR, light sensing, and OTA switching between sensor firmware variants. Requires ESPHome 2026.11.0 or later. |
+| `athom-ld2412-sensor-sht40.yaml` | LD2412 Sensor + SHT40 | `esp32-c6-devkitm-1` | LD2412 with external temperature and humidity sensing and calibration offsets. |
+| `athom-ld2412-sensor-scd40.yaml` | LD2412 Sensor + SCD40 | `esp32-c6-devkitm-1` | LD2412 with external CO2, temperature, and humidity sensing and calibration offsets. |
 | `athom-ld2450-sensor.yaml` | PS02C3MZ Sensor | `esp32-c3-devkitm-1` | LD2450 mmWave presence sensor with target tracking, zones, light sensor, and status LED. |
+| `athom-ld6004-sensor.yaml` | LD6004 Sensor | `esp32-c6-devkitm-1` | LD6004 3D radar with three-target tracking, configurable detection, interference and dwell areas, PIR, light sensing, and OTA switching between sensor firmware variants. Requires ESPHome 2026.11.0 or later. |
+| `athom-ld6004-sensor-sht40.yaml` | LD6004 Sensor + SHT40 | `esp32-c6-devkitm-1` | LD6004 with external temperature and humidity sensing and calibration offsets. |
+| `athom-ld6004-sensor-scd40.yaml` | LD6004 Sensor + SCD40 | `esp32-c6-devkitm-1` | LD6004 with external CO2, temperature, and humidity sensing and calibration offsets. |
 | `athom-mini-relay-v2.yaml` | Athom Mini Relay V2 | `esp32-c3-devkitm-1` | Mini relay with local switch input, relay output, status LED, and power monitoring. |
 | `athom-presence-sensor-pro.yaml` | Athom Presence Sensor Pro | `esp32-c6-devkitm-1` | mmWave and PIR presence detection, light sensing, Bluetooth proxy, and OTA switching between sensor firmware variants. |
 | `athom-presence-sensor-pro-sht40.yaml` | Athom Presence Sensor Pro + SHT40 | `esp32-c6-devkitm-1` | Presence Sensor Pro with external temperature and humidity sensing and calibration offsets. |
@@ -235,9 +241,11 @@ The RF433 IR Remote Pro ships with the standard firmware (`athom-rf-ir-remote-pr
 
 All variants share the same device name and storage layout, so learned IR/RF signals and Home Assistant entities are kept. After switching, the **Firmware Update** entity follows the installed variant's manifest. If the manifest cannot be fetched within 60 seconds, the switch is aborted and logged.
 
-### Presence Sensor Pro sensor firmware variants
+### Presence Sensor Pro, LD2412, and LD6004 sensor firmware variants
 
-Connect the external SHT40 or SCD40 sensor to the Presence Sensor Pro's I2C pins (`SDA GPIO13`, `SCL GPIO12`). In Home Assistant, set **Firmware Variant** to **With sht40 sensor** or **With scd40 sensor**, then press **Install Selected Firmware**. To return to the firmware for use without an external sensor, select **Standard** and press the same button.
+For LD2412 and LD6004, the firmware selector is available starting with device firmware `v6.0.2`.
+
+Connect the external SHT40 or SCD40 sensor to the device's external sensor port (`SDA GPIO13`, `SCL GPIO12`). In Home Assistant, set **Firmware Variant** to **With sht40 sensor** or **With scd40 sensor**, then press **Install Selected Firmware**. Select **Standard** and press the same button to return to the standard firmware.
 
 The device installs the selected firmware from GitHub Pages and reboots. Online switching requires that all three variants have been published. After reboot, **Firmware Variant** shows the installed variant and **Firmware Update** checks that variant's manifest.
 

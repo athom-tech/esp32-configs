@@ -1,6 +1,6 @@
 substitutions:
-  name: "athom-ps02c3mz-sensor"
-  friendly_name: "PS02C3MZ Sensor"
+  name: "athom-ld2450-sensor"
+  friendly_name: "Athom LD2450 Sensor"
   room: ""
   device_description: "athom esp32c3 ld2450 motion target tracking sensor"
   project_name: "China Athom Technology.PS02C3MZ LD2450"

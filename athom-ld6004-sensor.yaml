@@ -1,0 +1,897 @@
+substitutions:
+  name: "athom-ld6004-sensor"
+  friendly_name: "Athom LD6004 Sensor"
+  room: ""
+  device_description: "athom esp32c6 ld6004 motion target tracking sensor"
+  project_name: "China Athom Technology.PS02C3MZ Pro (LD6004)"
+  project_version: "v6.0.2"
+  update_interval: 60s
+  # Define a domain for this device to use. i.e. iot.home.lan (so device will appear as athom-smart-plug-v2.iot.home.lan in DNS/DHCP logs)
+  dns_domain: ""
+  # Set timezone of the smart plug. Useful if the plug is in a location different to the HA server. Can be entered in unix Country/Area format (i.e. "Australia/Sydney")
+  timezone: ""
+  # Set the duration between the sntp service polling ntp.org servers for an update
+  sntp_update_interval: 6h
+  # Network time servers for your region, enter from lowest to highest priority. To use local servers update as per zones or countries at: https://www.ntppool.org/zone/@
+  sntp_server_1: "0.pool.ntp.org"
+  sntp_server_2: "1.pool.ntp.org"
+  sntp_server_3: "2.pool.ntp.org"
+  # Enables faster network connections, with last connected SSID being connected to and no full scan for SSID being undertaken
+  wifi_fast_connect: "false"
+  # Define logging level: NONE, ERROR, WARN, INFO, DEBUG (Default), VERBOSE, VERY_VERBOSE
+  log_level: "NONE"
+  # Enable or disable the use of IPv6 networking on the device
+  ipv6_enable: "false"
+  firmware_base_file: "athom-ld6004-sensor"
+  firmware_variant: "Standard"
+  firmware_file: "${firmware_base_file}"
+  firmware_url: "https://athom-tech.github.io/esp32-configs/firmware"
+
+#########################GPIO#################
+  BH1750_SDA_PIN: GPIO6
+  BH1750_SCL_PIN: GPIO7
+  RADAR_OUT_PIN: GPIO2
+  SENSOR_SDA_PIN: GPIO13
+  SENSOR_SCL_PIN: GPIO12
+  RADAR_TX: GPIO20
+  RADAR_RX: GPIO21
+  PIR_PIN: GPIO3
+  LED_PIN: GPIO14
+  BUTTON_PIN: GPIO9
+#########################GPIO#################
+
+esphome:
+  name: "${name}"
+  friendly_name: "${friendly_name}"
+  comment: "${device_description}"
+  area: "${room}"
+  name_add_mac_suffix: true
+  min_version: 2026.11.0
+  project:
+    name: "${project_name}"
+    version: "${project_version}"
+  on_boot:
+    priority: -100
+    then:
+      - lambda: |-
+          id(firmware_switch_update).add_on_state_callback([]() {
+            auto &target = id(firmware_target_file);
+            if (target.empty()) {
+              return;
+            }
+            const auto &info = id(firmware_switch_update).update_info;
+            // Releases name each binary <yaml-stem>-<device-name>-esp32c6.ota.bin.
+            const std::string expected_url = "${firmware_url}/" + target + "-${firmware_base_file}-esp32c6.ota.bin";
+            if (info.firmware_url == expected_url && info.md5.size() == 32 &&
+                info.md5.find_first_not_of("0123456789abcdef") == std::string::npos) {
+              target.clear();
+            }
+          });
+
+esp32:
+  board: esp32-c6-devkitm-1
+  flash_size: 8MB
+  flash_mode: dio
+  variant: ESP32C6
+  framework:
+    type: esp-idf
+    version: recommended
+    sdkconfig_options:
+      # @grigi found in testing that these options resulted in better responsiveness.
+      # BLE 4.2 is supported by ALL ESP32 boards that have bluetooth, the original and derivatives.
+      CONFIG_BT_BLE_42_FEATURES_SUPPORTED: y
+      # Also enable this on any derivative boards (S2, C3 etc) but not the original ESP32.
+      CONFIG_BT_BLE_50_FEATURES_SUPPORTED: y
+      # Extend the watchdog timeout, so the device reboots if the device appears locked up for over 10 seconds.
+      CONFIG_ESP_TASK_WDT_TIMEOUT_S: "10"
+
+globals:
+  - id: firmware_target_file
+    type: std::string
+    restore_value: false
+    initial_value: '""'
+
+logger:
+  id: logger_component
+  baud_rate: 115200
+  hardware_uart: UART0
+  boot_log_level: ${log_level}
+  level: ${log_level}
+
+mdns:
+  id: mdns_component
+  disabled: false
+
+web_server:
+  id: web_server_component
+  port: 80
+
+ota:
+  - platform: http_request
+    id: ota_http_request
+  - platform: http_request
+    id: ota_firmware_switch
+  - platform: esphome
+    id: ota_esphome
+
+# Required by the ota http_request platform and the update component.
+# verify_ssl: false skips TLS cert validation to reduce heap/RAM pressure during
+# the download; the manifest's MD5 still verifies firmware integrity before flashing.
+http_request:
+  id: http_request_component
+  verify_ssl: false
+
+update:
+  - platform: http_request
+    id: update_http_request
+    name: "Firmware Update"
+    ota_id: ota_http_request
+    source: ${firmware_url}/${firmware_file}.manifest.json
+  # Only the install script checks the selected variant's manifest.
+  - platform: http_request
+    id: firmware_switch_update
+    internal: true
+    ota_id: ota_firmware_switch
+    source: ${firmware_url}/${firmware_file}.manifest.json
+    update_interval: never
+
+network:
+  id: network_component
+  enable_ipv6: ${ipv6_enable}
+
+wifi:
+  id: wifi_component
+  # This spawns an AP with the device name and mac address with no password.
+  ap: {}
+  # Allow rapid re-connection to previously connect WiFi SSID, skipping scan of all SSID
+  fast_connect: "${wifi_fast_connect}"
+  # Define dns domain / suffix to add to hostname
+  domain: "${dns_domain}"
+
+captive_portal:
+  id: captive_portal_component
+
+esp32_ble_tracker:
+  id: esp32_ble_tracker_component
+  scan_parameters:
+    # Don't auto start BLE scanning, we control it in the `api` block's automation.
+    continuous: false
+    active: true  # send scan-request packets to gather more info, like device name for some devices.
+    interval: 320ms  # default 320ms - how long to spend on each advert channel
+    window:   300ms  # default 30ms - how long to actually "listen" in each interval. Reduce this if device is unstable.
+    # If the device cannot keep up or becomes unstable, reduce the "window" setting. This may be
+    # required if your device is controlling other sensors or doing PWM for lights etc.
+
+# Enable Home Assistant API
+api:
+  id: api_component
+  on_client_connected:
+    - esp32_ble_tracker.start_scan:
+       continuous: true
+  on_client_disconnected:
+    - esp32_ble_tracker.stop_scan:
+
+bluetooth_proxy:
+  id: bluetooth_proxy_component
+  active: true
+
+improv_ble:
+  id: improv_ble_component
+  authorizer: none
+
+dashboard_import:
+  package_import_url: github://athom-tech/esp32-configs/${firmware_file}.yaml
+
+light:
+  - platform: status_led
+    name: "Status LED"
+    id: led
+    pin: ${LED_PIN}
+    disabled_by_default: true
+    entity_category: config
+
+i2c:
+  - id: i2c_bus_lp
+    sda: ${BH1750_SDA_PIN}
+    scl: ${BH1750_SCL_PIN}
+    low_power_mode: true
+    scan: true
+
+uart:
+  id: uart_ld6004
+  tx_pin: ${RADAR_TX}
+  rx_pin: ${RADAR_RX}
+  baud_rate: 115200
+  data_bits: 8
+  parity: NONE
+  stop_bits: 1
+
+ld6004:
+  id: ld6004_radar
+  uart_id: uart_ld6004
+
+button:
+  - platform: template
+    name: "Install Selected Firmware"
+    id: template_install_firmware_variant
+    icon: mdi:cellphone-arrow-down
+    entity_category: config
+    on_press:
+      - script.execute:
+          id: install_firmware_variant
+          target_file: !lambda |-
+            const auto variant = id(firmware_variant_select).current_option();
+            std::string file = "${firmware_base_file}";
+            if (variant == "With sht40 sensor") {
+              file += "-sht40";
+            } else if (variant == "With scd40 sensor") {
+              file += "-scd40";
+            }
+            return file;
+
+  - platform: ld6004
+    ld6004_id: ld6004_radar
+    apply_area:
+      name: "Apply Area"
+      id: ld6004_apply_area
+    auto_interference:
+      name: "Auto Interference"
+      id: ld6004_auto_interference
+    get_areas:
+      name: "Get Areas"
+      id: ld6004_get_areas
+    clear_interference:
+      name: "Clear Interference"
+      id: ld6004_clear_interference
+    reset_detection_area:
+      name: "Reset Detection Area"
+      id: ld6004_reset_detection_area
+    get_delay:
+      name: "Get Hold Delay"
+      id: ld6004_get_delay
+    get_sensitivity:
+      name: "Get Sensitivity"
+      id: ld6004_get_sensitivity
+    get_trigger_speed:
+      name: "Get Trigger Speed"
+      id: ld6004_get_trigger_speed
+    get_z_range:
+      name: "Get Z Range"
+      id: ld6004_get_z_range
+    get_installation:
+      name: "Get Installation"
+      id: ld6004_get_installation
+    get_low_power_mode:
+      name: "Get Low Power Mode"
+      id: ld6004_get_low_power_mode
+    get_low_power_sleep_time:
+      name: "Get Low Power Sleep Time"
+      id: ld6004_get_low_power_sleep_time
+    reset_unattended:
+      name: "Reset Unattended"
+      id: ld6004_reset_unattended
+    clear_dwell:
+      name: "Clear Dwell"
+      id: ld6004_clear_dwell
+
+  - platform: factory_reset
+    name: Restart with Factory Default Settings
+    id: Reset
+    entity_category: config
+
+  - platform: restart
+    name: Restart_esp
+    id: restart_esp
+    entity_category: config
+
+  - platform: safe_mode
+    name: "Safe Mode"
+    id: id_safe_mode
+    internal: false
+    entity_category: config
+
+sensor:
+  - platform: ld6004
+    ld6004_id: ld6004_radar
+    target_count:
+      name: "Presence Target Count"
+      id: ld6004_target_count
+    point_count:
+      name: "Point Cloud Count"
+      id: ld6004_point_count
+    target_1:
+      x:
+        name: "Target-1 X"
+        id: ld6004_target_1_x
+      y:
+        name: "Target-1 Y"
+        id: ld6004_target_1_y
+      z:
+        name: "Target-1 Z"
+        id: ld6004_target_1_z
+      doppler_index:
+        name: "Target-1 Doppler Index"
+        id: ld6004_target_1_doppler_index
+      cluster_id:
+        name: "Target-1 Cluster ID"
+        id: ld6004_target_1_cluster_id
+    target_2:
+      x:
+        name: "Target-2 X"
+        id: ld6004_target_2_x
+      y:
+        name: "Target-2 Y"
+        id: ld6004_target_2_y
+      z:
+        name: "Target-2 Z"
+        id: ld6004_target_2_z
+      doppler_index:
+        name: "Target-2 Doppler Index"
+        id: ld6004_target_2_doppler_index
+      cluster_id:
+        name: "Target-2 Cluster ID"
+        id: ld6004_target_2_cluster_id
+    target_3:
+      x:
+        name: "Target-3 X"
+        id: ld6004_target_3_x
+      y:
+        name: "Target-3 Y"
+        id: ld6004_target_3_y
+      z:
+        name: "Target-3 Z"
+        id: ld6004_target_3_z
+      doppler_index:
+        name: "Target-3 Doppler Index"
+        id: ld6004_target_3_doppler_index
+      cluster_id:
+        name: "Target-3 Cluster ID"
+        id: ld6004_target_3_cluster_id
+    interference_area_0:
+      x_min:
+        name: "Interference Area 0 X Min"
+        id: ld6004_interference_area_0_x_min
+      x_max:
+        name: "Interference Area 0 X Max"
+        id: ld6004_interference_area_0_x_max
+      y_min:
+        name: "Interference Area 0 Y Min"
+        id: ld6004_interference_area_0_y_min
+      y_max:
+        name: "Interference Area 0 Y Max"
+        id: ld6004_interference_area_0_y_max
+      z_min:
+        name: "Interference Area 0 Z Min"
+        id: ld6004_interference_area_0_z_min
+      z_max:
+        name: "Interference Area 0 Z Max"
+        id: ld6004_interference_area_0_z_max
+    interference_area_1:
+      x_min:
+        name: "Interference Area 1 X Min"
+        id: ld6004_interference_area_1_x_min
+      x_max:
+        name: "Interference Area 1 X Max"
+        id: ld6004_interference_area_1_x_max
+      y_min:
+        name: "Interference Area 1 Y Min"
+        id: ld6004_interference_area_1_y_min
+      y_max:
+        name: "Interference Area 1 Y Max"
+        id: ld6004_interference_area_1_y_max
+      z_min:
+        name: "Interference Area 1 Z Min"
+        id: ld6004_interference_area_1_z_min
+      z_max:
+        name: "Interference Area 1 Z Max"
+        id: ld6004_interference_area_1_z_max
+    interference_area_2:
+      x_min:
+        name: "Interference Area 2 X Min"
+        id: ld6004_interference_area_2_x_min
+      x_max:
+        name: "Interference Area 2 X Max"
+        id: ld6004_interference_area_2_x_max
+      y_min:
+        name: "Interference Area 2 Y Min"
+        id: ld6004_interference_area_2_y_min
+      y_max:
+        name: "Interference Area 2 Y Max"
+        id: ld6004_interference_area_2_y_max
+      z_min:
+        name: "Interference Area 2 Z Min"
+        id: ld6004_interference_area_2_z_min
+      z_max:
+        name: "Interference Area 2 Z Max"
+        id: ld6004_interference_area_2_z_max
+    interference_area_3:
+      x_min:
+        name: "Interference Area 3 X Min"
+        id: ld6004_interference_area_3_x_min
+      x_max:
+        name: "Interference Area 3 X Max"
+        id: ld6004_interference_area_3_x_max
+      y_min:
+        name: "Interference Area 3 Y Min"
+        id: ld6004_interference_area_3_y_min
+      y_max:
+        name: "Interference Area 3 Y Max"
+        id: ld6004_interference_area_3_y_max
+      z_min:
+        name: "Interference Area 3 Z Min"
+        id: ld6004_interference_area_3_z_min
+      z_max:
+        name: "Interference Area 3 Z Max"
+        id: ld6004_interference_area_3_z_max
+    detection_area_0:
+      x_min:
+        name: "Detection Area 0 X Min"
+        id: ld6004_detection_area_0_x_min
+      x_max:
+        name: "Detection Area 0 X Max"
+        id: ld6004_detection_area_0_x_max
+      y_min:
+        name: "Detection Area 0 Y Min"
+        id: ld6004_detection_area_0_y_min
+      y_max:
+        name: "Detection Area 0 Y Max"
+        id: ld6004_detection_area_0_y_max
+      z_min:
+        name: "Detection Area 0 Z Min"
+        id: ld6004_detection_area_0_z_min
+      z_max:
+        name: "Detection Area 0 Z Max"
+        id: ld6004_detection_area_0_z_max
+    detection_area_1:
+      x_min:
+        name: "Detection Area 1 X Min"
+        id: ld6004_detection_area_1_x_min
+      x_max:
+        name: "Detection Area 1 X Max"
+        id: ld6004_detection_area_1_x_max
+      y_min:
+        name: "Detection Area 1 Y Min"
+        id: ld6004_detection_area_1_y_min
+      y_max:
+        name: "Detection Area 1 Y Max"
+        id: ld6004_detection_area_1_y_max
+      z_min:
+        name: "Detection Area 1 Z Min"
+        id: ld6004_detection_area_1_z_min
+      z_max:
+        name: "Detection Area 1 Z Max"
+        id: ld6004_detection_area_1_z_max
+    detection_area_2:
+      x_min:
+        name: "Detection Area 2 X Min"
+        id: ld6004_detection_area_2_x_min
+      x_max:
+        name: "Detection Area 2 X Max"
+        id: ld6004_detection_area_2_x_max
+      y_min:
+        name: "Detection Area 2 Y Min"
+        id: ld6004_detection_area_2_y_min
+      y_max:
+        name: "Detection Area 2 Y Max"
+        id: ld6004_detection_area_2_y_max
+      z_min:
+        name: "Detection Area 2 Z Min"
+        id: ld6004_detection_area_2_z_min
+      z_max:
+        name: "Detection Area 2 Z Max"
+        id: ld6004_detection_area_2_z_max
+    detection_area_3:
+      x_min:
+        name: "Detection Area 3 X Min"
+        id: ld6004_detection_area_3_x_min
+      x_max:
+        name: "Detection Area 3 X Max"
+        id: ld6004_detection_area_3_x_max
+      y_min:
+        name: "Detection Area 3 Y Min"
+        id: ld6004_detection_area_3_y_min
+      y_max:
+        name: "Detection Area 3 Y Max"
+        id: ld6004_detection_area_3_y_max
+      z_min:
+        name: "Detection Area 3 Z Min"
+        id: ld6004_detection_area_3_z_min
+      z_max:
+        name: "Detection Area 3 Z Max"
+        id: ld6004_detection_area_3_z_max
+    dwell_area_0:
+      x_min:
+        name: "Dwell Area 0 X Min"
+        id: ld6004_dwell_area_0_x_min
+      x_max:
+        name: "Dwell Area 0 X Max"
+        id: ld6004_dwell_area_0_x_max
+      y_min:
+        name: "Dwell Area 0 Y Min"
+        id: ld6004_dwell_area_0_y_min
+      y_max:
+        name: "Dwell Area 0 Y Max"
+        id: ld6004_dwell_area_0_y_max
+      z_min:
+        name: "Dwell Area 0 Z Min"
+        id: ld6004_dwell_area_0_z_min
+      z_max:
+        name: "Dwell Area 0 Z Max"
+        id: ld6004_dwell_area_0_z_max
+    dwell_area_1:
+      x_min:
+        name: "Dwell Area 1 X Min"
+        id: ld6004_dwell_area_1_x_min
+      x_max:
+        name: "Dwell Area 1 X Max"
+        id: ld6004_dwell_area_1_x_max
+      y_min:
+        name: "Dwell Area 1 Y Min"
+        id: ld6004_dwell_area_1_y_min
+      y_max:
+        name: "Dwell Area 1 Y Max"
+        id: ld6004_dwell_area_1_y_max
+      z_min:
+        name: "Dwell Area 1 Z Min"
+        id: ld6004_dwell_area_1_z_min
+      z_max:
+        name: "Dwell Area 1 Z Max"
+        id: ld6004_dwell_area_1_z_max
+    dwell_area_2:
+      x_min:
+        name: "Dwell Area 2 X Min"
+        id: ld6004_dwell_area_2_x_min
+      x_max:
+        name: "Dwell Area 2 X Max"
+        id: ld6004_dwell_area_2_x_max
+      y_min:
+        name: "Dwell Area 2 Y Min"
+        id: ld6004_dwell_area_2_y_min
+      y_max:
+        name: "Dwell Area 2 Y Max"
+        id: ld6004_dwell_area_2_y_max
+      z_min:
+        name: "Dwell Area 2 Z Min"
+        id: ld6004_dwell_area_2_z_min
+      z_max:
+        name: "Dwell Area 2 Z Max"
+        id: ld6004_dwell_area_2_z_max
+    dwell_area_3:
+      x_min:
+        name: "Dwell Area 3 X Min"
+        id: ld6004_dwell_area_3_x_min
+      x_max:
+        name: "Dwell Area 3 X Max"
+        id: ld6004_dwell_area_3_x_max
+      y_min:
+        name: "Dwell Area 3 Y Min"
+        id: ld6004_dwell_area_3_y_min
+      y_max:
+        name: "Dwell Area 3 Y Max"
+        id: ld6004_dwell_area_3_y_max
+      z_min:
+        name: "Dwell Area 3 Z Min"
+        id: ld6004_dwell_area_3_z_min
+      z_max:
+        name: "Dwell Area 3 Z Max"
+        id: ld6004_dwell_area_3_z_max
+
+  - platform: uptime
+    name: "Uptime Sensor"
+    id: uptime_sensor
+    type:
+      timestamp
+    entity_category: "diagnostic"
+
+  - platform: wifi_signal
+    name: "WiFi Signal dB"
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: "diagnostic"
+
+  - platform: copy
+    source_id: wifi_signal_db
+    name: "WiFi Signal Percent"
+    id: wifi_signal_percent
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "Signal %"
+    entity_category: "diagnostic"
+    device_class: ""
+
+  - platform: bh1750
+    name: "Light Sensor"
+    id: "bh1750_sensor"
+    i2c_id: i2c_bus_lp
+    address: 0x23
+    update_interval: 5s
+
+binary_sensor:
+  - platform: ld6004
+    ld6004_id: ld6004_radar
+    target:
+      name: "Presence"
+      id: ld6004_presence
+    target_1:
+      name: "Target-1 Presence"
+      id: ld6004_target_1_presence
+    target_2:
+      name: "Target-2 Presence"
+      id: ld6004_target_2_presence
+    target_3:
+      name: "Target-3 Presence"
+      id: ld6004_target_3_presence
+    detection_area_0:
+      name: "Detection Area 0 Presence"
+      id: ld6004_detection_area_0_presence
+    detection_area_1:
+      name: "Detection Area 1 Presence"
+      id: ld6004_detection_area_1_presence
+    detection_area_2:
+      name: "Detection Area 2 Presence"
+      id: ld6004_detection_area_2_presence
+    detection_area_3:
+      name: "Detection Area 3 Presence"
+      id: ld6004_detection_area_3_presence
+
+  - platform: status
+    name: "Status"
+    id: id_status
+    entity_category: diagnostic
+
+  - platform: gpio
+    pin:
+      number: ${BUTTON_PIN}
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Button"
+    id: gpio_button
+    disabled_by_default: true
+    filters:
+      - delayed_on_off: 20ms
+    on_multi_click:
+      - timing:
+          - ON for at least 4s
+        then:
+          - button.press: Reset
+
+  - platform: gpio
+    pin:
+      number: ${PIR_PIN}
+      mode:
+        input: true
+        pullup: true
+    name: "Pir Sensor"
+    id: pir
+    filters:
+      - delayed_on: 30ms
+    device_class: motion
+
+  - platform: gpio
+    pin:
+      number: ${RADAR_OUT_PIN}
+      mode:
+        input: true
+        pullup: true
+    name: "mmWave Sensor"
+    id: mmwave
+    filters:
+      - delayed_on: 30ms
+    device_class: motion
+    on_release:
+      then:
+        - light.turn_off: led
+
+  - platform: template
+    name: "Occupancy"
+    id: occupancy
+    device_class: occupancy
+    lambda: |-
+      if ( id(mmwave).state and id(pir).state) {
+        return true;
+      }
+      else if (id(mmwave).state == 0) {
+        return false;
+      }
+      else {
+        return id(occupancy).state;
+      }
+
+switch:
+  - platform: ld6004
+    ld6004_id: ld6004_radar
+    point_cloud:
+      name: "Point Cloud"
+      id: ld6004_point_cloud
+      restore_mode: ALWAYS_OFF
+    target_display:
+      name: "Target Display"
+      id: ld6004_target_display
+      restore_mode: RESTORE_DEFAULT_ON
+
+text_sensor:
+  - platform: ld6004
+    ld6004_id: ld6004_radar
+    work_mode:
+      name: "Radar Work Mode"
+      id: ld6004_work_mode
+    ota_version:
+      name: "Radar Firmware Version"
+      id: ld6004_ota_version
+
+  - platform: wifi_info
+    ip_address:
+      name: "IP Address"
+      id: ip_address
+      entity_category: diagnostic
+    ssid:
+      name: "Connected SSID"
+      id: ssid
+      entity_category: diagnostic
+    mac_address:
+      name: "Mac Address"
+      id: mac_address
+      entity_category: diagnostic
+
+  #  Creates a sensor showing when the device was last restarted
+  - platform: template
+    name: 'Last Restart'
+    id: device_last_restart
+    icon: mdi:clock
+    entity_category: diagnostic
+#    device_class: timestamp
+
+number:
+  - platform: ld6004
+    ld6004_id: ld6004_radar
+    hold_delay:
+      name: "Hold Delay"
+      id: ld6004_hold_delay
+    z_min:
+      name: "Z Min"
+      id: ld6004_z_min
+    z_max:
+      name: "Z Max"
+      id: ld6004_z_max
+    low_power_sleep_time:
+      name: "Low Power Sleep Time"
+      id: ld6004_low_power_sleep_time
+    dwell_lifetime:
+      name: "Dwell Lifetime"
+      id: ld6004_dwell_lifetime
+    output_interval:
+      name: "Output Interval"
+      id: ld6004_output_interval
+    area_config:
+      x_min:
+        name: "Area X Min"
+        id: ld6004_area_x_min
+      x_max:
+        name: "Area X Max"
+        id: ld6004_area_x_max
+      y_min:
+        name: "Area Y Min"
+        id: ld6004_area_y_min
+      y_max:
+        name: "Area Y Max"
+        id: ld6004_area_y_max
+      z_min:
+        name: "Area Z Min"
+        id: ld6004_area_z_min
+      z_max:
+        name: "Area Z Max"
+        id: ld6004_area_z_max
+
+select:
+  - platform: template
+    name: "Firmware Variant"
+    id: firmware_variant_select
+    icon: mdi:chip
+    entity_category: config
+    optimistic: true
+    restore_value: false
+    options:
+      - "Standard"
+      - "With sht40 sensor"
+      - "With scd40 sensor"
+    initial_option: "${firmware_variant}"
+
+  - platform: ld6004
+    ld6004_id: ld6004_radar
+    sensitivity:
+      name: "Sensitivity"
+      id: ld6004_sensitivity
+    trigger_speed:
+      name: "Trigger Speed"
+      id: ld6004_trigger_speed
+    installation_mode:
+      name: "Installation Mode"
+      id: ld6004_installation_mode
+    area_id:
+      name: "Area ID"
+      id: ld6004_area_id
+    work_mode:
+      name: "Radar Work Mode Setting"
+      id: ld6004_work_mode_select
+    p20_mode:
+      name: "P20 Mode"
+      id: ld6004_p20_mode
+
+script:
+  - id: install_firmware_variant
+    mode: single
+    parameters:
+      target_file: string
+    then:
+      - if:
+          condition:
+            lambda: 'return target_file == "${firmware_file}";'
+          then:
+            - logger.log:
+                format: "Firmware variant ${firmware_variant} is already running"
+                level: INFO
+            - script.stop: install_firmware_variant
+
+      - if:
+          condition:
+            lambda: |-
+              return id(firmware_switch_update).state == update::UPDATE_STATE_INSTALLING ||
+                     id(update_http_request).state == update::UPDATE_STATE_INSTALLING;
+          then:
+            - script.stop: install_firmware_variant
+
+      - lambda: |-
+          id(firmware_target_file) = target_file;
+          id(firmware_switch_update).set_source_url("${firmware_url}/" + target_file + ".manifest.json");
+          ESP_LOGI("FW_VARIANT", "Checking firmware for %s", target_file.c_str());
+      - update.check: firmware_switch_update
+      - wait_until:
+          condition:
+            lambda: 'return id(firmware_target_file).empty();'
+          timeout: 60s
+      - if:
+          condition:
+            lambda: 'return !id(firmware_target_file).empty();'
+          then:
+            - lambda: 'id(firmware_target_file).clear();'
+            - logger.log:
+                format: "No matching firmware manifest received, switch aborted"
+                level: ERROR
+            - script.stop: install_firmware_variant
+
+      - if:
+          condition:
+            lambda: 'return id(update_http_request).state == update::UPDATE_STATE_INSTALLING;'
+          then:
+            - logger.log:
+                format: "A firmware update is already installing"
+                level: WARN
+            - script.stop: install_firmware_variant
+
+      - update.perform:
+          id: firmware_switch_update
+          force_update: true
+
+time:
+  - platform: sntp
+    id: sntp_time
+  # Define the timezone of the device
+    timezone: "${timezone}"
+  # Change sync interval from default 5min to 6 hours (or as set in substitutions)
+    update_interval: ${sntp_update_interval}
+  # Set specific sntp servers to use
+    servers:
+      - "${sntp_server_1}"
+      - "${sntp_server_2}"
+      - "${sntp_server_3}"
+  # Publish the time the device was last restarted
+    on_time_sync:
+      then:
+        # Update last restart time, but only once.
+        - if:
+            condition:
+              lambda: 'return id(device_last_restart).state == "";'
+            then:
+              - text_sensor.template.publish:
+                  id: device_last_restart
+                  state: !lambda 'return id(sntp_time).now().strftime("%a %d %b %Y - %I:%M:%S %p");'

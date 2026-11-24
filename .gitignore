@@ -2,11 +2,16 @@
 # This is an example and may include too much for your use-case.
 # You can modify this file to suit your needs.
 /.esphome/
+/examples/.esphome/
+/examples
+/components/hs1811
 **/.pioenvs/
 **/.piolibdeps/
 **/lib/
 **/src/
 **/platformio.ini
 /secrets.yaml
+/examples/secrets.yaml
+__pycache__/
 .DS_Store
 **/.DS_Store
